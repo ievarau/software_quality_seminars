@@ -5,3 +5,13 @@ This is a repo for scripts and documents that are related to the NCMM Software q
 
 This is the day when we created our repo to work on Software quality.
 
+```
+ ____________________________ 
+< Welcome to our repository! >
+ ---------------------------- 
+        \   ^__^
+         \  (oo)\_______
+            (__)\       )\/\
+                ||----w |
+                ||     ||
+```
