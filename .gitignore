@@ -1,3 +1,9 @@
+# Files that we are not sure if we wanna add:
+
+ievas_results/not_sure_yet.txt
+
+
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
