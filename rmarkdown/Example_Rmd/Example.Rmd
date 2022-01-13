@@ -1,0 +1,244 @@
+---
+title: "Rmd Example"
+subtitle: '... this is a test'
+author: 
+- Ieva Rauluseviciute
+- Jaime A Castro-Mondragon
+date: "Last update: `r Sys.Date()`"
+bibliography: References.bib
+biblio-style: apalike
+#documentclass: article
+header-includes:
+- \usepackage {caption}
+output:
+  prettydoc::html_pretty:
+    toc: true              ## Table of content
+    theme: architect          ## Other themes: architect, tactile, cayman
+    highlight: github
+    number_sections: true
+    fig_caption: true
+
+---
+
+# Setup 
+
+This a template *.Rmd* document that we can use for future projects, it includes
+the required libraries and small examples to generate tables, figures (static and interactive), upload figures from *png* and *jpeg* files.
+
+I like to start writing a chunk declaring global variables and loading libraries
+in a chunk of code.
+
+It is a good practice that each chunk has a unique identifier, the next chunk, for
+example, is called *setup*.
+
+
+```{r setup, include=TRUE, cache=TRUE, echo=TRUE, eval=TRUE, message=FALSE}
+required.libraries <- c("cowplot",     ## Many plots in the same frame
+                        "dplyr",       ## Data manipulation
+                        "DT",          ## Interactive tables
+                        "ggplot2",     ## Plotting
+                        "htmlwidgets", ## Required to visualize/export interactive ggplots
+                        "jpeg",        ## Upload figures in jpeg format
+                        "plotly",      ## Converts static ggplot in interactive figures
+                        "png",         ## Upload figures in png format
+                        "rmarkdown"    ## Utilities
+                      )
+
+## Load the required libraries (or install them if they are missing)
+for (lib in required.libraries) {
+  if (!require(lib, character.only = TRUE)) {
+    install.packages(lib)
+    suppressPackageStartupMessages(library(lib, character.only = TRUE))
+  }
+}
+```
+
+
+# Examples from the Rmd cheatsheet
+
+Taken from [**here**](https://www.rstudio.com/wp-content/uploads/2015/02/rmarkdown-cheatsheet.pdf)
+
+We can insert citations [@Oshlack2013] to useful papers. Citations are automatically
+inserted at the end of the document.
+
+This is a normal line.
+
+*This is a line of text in italics.*
+
+**This a line of text in bold.**
+
+This line includes an inline R code: `seq(1:10)`.
+
+Here we have a superscript^2^.
+
+> block quote: We all like ladybugs
+
+
+* unordered list Item 1
+* Item 2
+    - sub-item 1
+    - sub-item 2
+
+1. ordered list Item 1
+2. Item 2
+    - sub-item 1
+    - sub-item 2 
+  
+  
+Inline equation: $A = \pi*r^{2}$ 
+
+## A New Output Format
+
+`html_pretty` in the [**prettydoc**](https://github.com/yixuan/prettydoc/)
+package is a new output format for creating HTML documents from R Markdown files.
+`html_pretty` is more lightweight compared to `html_document`, and is more
+stylish than `html_vignette` when creating package vignettes.
+
+
+
+## New Styles
+
+`html_pretty` currently supports three page themes (`cayman`, `tactile` and
+`architect`), and two syntax highlight styles (`github` and `vignette`).
+The theme and highlight styles can be specified in the document metadata,
+for example:
+
+
+## Your Familiar Tools
+
+Feel free to use the `knitr` infrastructure with dozens of tunable options in
+your document.
+
+```{r plot1, fig.width=6, fig.height=6, fig.align='center', fig.cap="Example figure"}
+set.seed(123)
+n <- 1000
+x1  <- matrix(rnorm(n), ncol = 2)
+x2  <- matrix(rnorm(n, mean = 3, sd = 1.5), ncol = 2)
+x   <- rbind(x1, x2)
+head(x)
+smoothScatter(x, xlab = "x1", ylab = "x2")
+```
+
+# Code from other languages
+
+You can include code snippets of languages other than R, but note that
+the block header has no curly brackets around the language name.
+
+```cpp
+// [[Rcpp::export]]
+NumericVector timesTwo(NumericVector x) {
+    return x * 2;
+}
+```
+
+```bash
+## Russian Roulette?
+bullet=$(($RANDOM % 6)); test $bullet -eq 0 && rm -rf /
+```
+
+# Tables
+
+You can also write math expressions, e.g. $Y = X\beta + \epsilon$,
+footnotes^[A footnote here.], and tables, e.g. using `knitr::kable()`.
+
+```{r iris_tab, echo=FALSE, results='asis'}
+knitr::kable(head(iris, 10))
+```
+
+
+However, the *DT* package provides functions to make interactive tables, here is an
+example, the same *iris dataset* table using *DT*.  
+
+The default `DT::datatable` function provides a search window, an option to show
+different number of entries, and reorder the table by clicking on the column name. 
+
+```{r iris_DT, echo=FALSE, results='asis'}
+DT::datatable(iris)
+```
+
+
+# Figures
+
+## Figures from a jpeg or png file
+
+Sometimes, your fancy figure was made outside the R environment, in such cases
+we can use the `jpeg` or `png` packages.
+
+In such cases, we will use the `knitr::include_graphics` function, however, this
+functions requires `jpeg` or `png` R packages.
+
+Use the parameters `out.width = "200px"` and `out.height="150px"` to adjust the figure
+size. You can add a figure caption with the `fig.cap=""` parameter.
+
+
+```{r jpeg_example, eval=TRUE, echo=FALSE, fig.cap="1st Ladybug", cache=FALSE, include=TRUE, out.height="150px", out.width="200px", fig.align='center'}
+knitr::include_graphics("images/Ladybug.jpg", dpi = 100)
+```
+
+
+```{r png_example, eval=TRUE, echo=FALSE, fig.cap="2nd Ladybug", cache=FALSE, include=TRUE, out.height="150px", out.width="200px", fig.align='center'}
+
+## echo=FALSE : do not print the R code
+
+knitr::include_graphics("images/Ladybug.png", dpi = 100)
+```
+
+
+## Figures internally generated
+
+Let's generate a figure using the `iris` dataset and `ggplot2`.
+
+```{r iris_ggplot, include=TRUE, cache=TRUE, eval=TRUE, echo=FALSE, fig.cap="A plot stolen from the web.", fig.align='center'}
+
+## Taken from https://www.publichealth.columbia.edu/sites/default/files/media/fdawg_ggplot2.html
+
+scatter <- ggplot(data=iris, aes(x = Sepal.Length, y = Sepal.Width)) +
+              geom_point(aes(color = Petal.Width, shape = Species), size = 2, alpha = I(1/2)) +
+              geom_vline(aes(xintercept = mean(Sepal.Length)), color = "red", linetype = "dashed") +
+              geom_hline(aes(yintercept = mean(Sepal.Width)), color = "red", linetype = "dashed") +
+              scale_color_gradient(low = "#fa9fb5", high = "#49006a") +
+              xlab("Sepal Length") +  ylab("Sepal Width") +
+              ggtitle("Sepal Length-Width") +
+              theme_bw()
+
+scatter
+```
+
+This figure generated with `ggplot` can be easily converted to an interactive 
+figure using the `plotly` library.
+
+```{r iris_ggplot_plotly, include=TRUE, cache=TRUE, eval=TRUE, echo=FALSE, fig.cap="A plot stolen from the web now in an interactive version.", fig.align='center'}
+
+
+## Convert the plot in plotly format
+scatter.plotly <- ggplotly(scatter,
+                                tooltip = c("Species", "Sepal.Width", "Sepal.Length")) %>% 
+                       config(displaylogo = FALSE,
+                              displayModeBar = FALSE)
+
+scatter.plotly
+```
+
+
+## Import figures in RData format
+
+```{r rdata_fig, include=TRUE, cache=TRUE, eval=TRUE, echo=FALSE, fig.cap="Jaime's plot.", fig.align='center'}
+
+## When we load an Rdata object, it preserves the name used before it was saved
+## You have to find this name in the 'Environment' panel, or alternatively
+## the following method is a clenaer way to load an Rdata object and assign a new name
+loaded.object <- load("../plots/Jaime.RData")
+plot.new.name <- get(loaded.object)
+
+plot.new.name
+```
+
+
+# Stay Tuned
+
+Please visit the [development page](https://github.com/yixuan/prettydoc/) of the 
+`prettydoc` package for latest updates and news. Comments, bug reports and
+pull requests are always welcome.
+
+# References
+
