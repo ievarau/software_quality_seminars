@@ -17,6 +17,10 @@ output:
     highlight: github
     number_sections: true
     fig_caption: true
+  # pdf_document:
+  #   toc: true              ## Table of content
+  #   number_sections: true
+  #   fig_caption: true
 
 ---
 
@@ -152,6 +156,10 @@ example, the same *iris dataset* table using *DT*.
 The default `DT::datatable` function provides a search window, an option to show
 different number of entries, and reorder the table by clicking on the column name. 
 
+This functionality is only available when the Rmd output is an `html` file, in `PDF`
+trying to print the interactive table will produce an error.
+
+
 ```{r iris_DT, echo=FALSE, results='asis'}
 DT::datatable(iris)
 ```
@@ -205,14 +213,17 @@ scatter
 ```
 
 This figure generated with `ggplot` can be easily converted to an interactive 
-figure using the `plotly` library.
+figure using the `plotly` library. This functionality is only available when the 
+Rmd output is an `html` file, in `PDF` trying to print the interactive plot will
+produce an error.
+
 
 ```{r iris_ggplot_plotly, include=TRUE, cache=TRUE, eval=TRUE, echo=FALSE, fig.cap="A plot stolen from the web now in an interactive version.", fig.align='center'}
 
 
 ## Convert the plot in plotly format
 scatter.plotly <- ggplotly(scatter,
-                                tooltip = c("Species", "Sepal.Width", "Sepal.Length")) %>% 
+                                tooltip = c("Species", "Sepal.Width", "Sepal.Length")) %>%
                        config(displaylogo = FALSE,
                               displayModeBar = FALSE)
 
