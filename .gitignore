@@ -2,6 +2,7 @@
 ievas_results/not_sure_yet.txt
 # Byte-compiled / optimized / DLL files
 __pycache__/
+.Rhistory
 *.py[cod]
 *$py.class
 # C extensions
