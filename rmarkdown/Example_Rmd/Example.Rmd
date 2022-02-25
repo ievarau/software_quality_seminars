@@ -4,6 +4,7 @@ subtitle: '... this is a test'
 author: 
 - Ieva Rauluseviciute
 - Jaime A Castro-Mondragon
+- Romana Tabita Pop
 date: "Last update: `r Sys.Date()`"
 bibliography: References.bib
 biblio-style: apalike
@@ -37,16 +38,19 @@ example, is called *setup*.
 
 
 ```{r setup, include=TRUE, cache=TRUE, echo=TRUE, eval=TRUE, message=FALSE}
-required.libraries <- c("cowplot",     ## Many plots in the same frame
+required.libraries <- c("cowplot",     ## Many (gg)plots in the same frame
                         "dplyr",       ## Data manipulation
                         "DT",          ## Interactive tables
                         "ggplot2",     ## Plotting
+                        "grid",        ## Many figures and plots in the same frame
+                        "gridExtra",   ## ## Many figures and plots in the same frame
                         "htmlwidgets", ## Required to visualize/export interactive ggplots
                         "jpeg",        ## Upload figures in jpeg format
                         "plotly",      ## Converts static ggplot in interactive figures
                         "png",         ## Upload figures in png format
                         "rmarkdown"    ## Utilities
                       )
+
 
 ## Load the required libraries (or install them if they are missing)
 for (lib in required.libraries) {
@@ -62,8 +66,7 @@ for (lib in required.libraries) {
 
 Taken from [**here**](https://www.rstudio.com/wp-content/uploads/2015/02/rmarkdown-cheatsheet.pdf)
 
-We can insert citations [@Oshlack2013] to useful papers. Citations are automatically
-inserted at the end of the document.
+We can insert citations [@Oshlack2013] to useful papers. Citations are automatically inserted at the end of the document.
 
 This is a normal line.
 
@@ -135,7 +138,7 @@ NumericVector timesTwo(NumericVector x) {
 }
 ```
 
-```bash
+```{bash, eval=FALSE}
 ## Russian Roulette?
 bullet=$(($RANDOM % 6)); test $bullet -eq 0 && rm -rf /
 ```
@@ -179,7 +182,8 @@ Use the parameters `out.width = "200px"` and `out.height="150px"` to adjust the 
 size. You can add a figure caption with the `fig.cap=""` parameter.
 
 
-```{r jpeg_example, eval=TRUE, echo=FALSE, fig.cap="1st Ladybug", cache=FALSE, include=TRUE, out.height="150px", out.width="200px", fig.align='center'}
+```{r jpeg_example, eval=TRUE, echo=FALSE, fig.cap="1st Ladybug", cache=FALSE, include=TRUE, out.height="50px", out.width="100px", fig.align='center'}
+
 knitr::include_graphics("images/Ladybug.jpg", dpi = 100)
 ```
 
@@ -237,11 +241,36 @@ scatter.plotly
 
 ## When we load an Rdata object, it preserves the name used before it was saved
 ## You have to find this name in the 'Environment' panel, or alternatively
-## the following method is a clenaer way to load an Rdata object and assign a new name
-loaded.object <- load("../plots/Jaime.RData")
-plot.new.name <- get(loaded.object)
+## the following method is a cleaner way to load an Rdata object and assign a new name
 
-plot.new.name
+#load("../plots/ieva.RData")
+
+jaime.plot <- get(load("../plots/Jaime.RData"))
+
+jaime.plot
+```
+
+
+
+
+
+```{r many_fig, include=TRUE, cache=TRUE, eval=TRUE, echo=FALSE, fig.cap="Ieva's plot.", fig.align='center', out.height="200px", out.width="300px"}
+
+## When we load an Rdata object, it preserves the name used before it was saved
+## You have to find this name in the 'Environment' panel, or alternatively
+## the following method is a cleaner way to load an Rdata object and assign a new name
+
+library(grid)
+library(gridExtra)
+img1 <-  rasterGrob(as.raster(readPNG("images/Ladybug.png")), interpolate = FALSE)
+img2 <-  rasterGrob(as.raster(readJPEG("images/Ladybug.jpg")), interpolate = FALSE)
+
+grid.arrange(img1, img2, jaime.plot, scatter,
+             widths = c(1, 1),
+             heights = c(0.5, 1),
+             ncol = 2,
+             top = "A collection of pictures")
+
 ```
 
 
