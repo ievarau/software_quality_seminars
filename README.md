@@ -47,6 +47,6 @@ This folder contains the favourite plots of people. The plots were used to creat
 
 If you have questions or concers, please contact:
 
-- Kata Ferenc : 
+- [Kata Ferenc](https://github.com/ferenckata) : katalitf@uio.no
 - [Ieva Rauluseviciute](https://bitbucket.org/ievara/)     : ievarau@ncmm.uio.no
 - [Jaime A Castro-Mondragon](https://jaimicore.github.io/) : j.a.c.mondragon@ncmm.uio.no
