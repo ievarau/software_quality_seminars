@@ -1,0 +1,20 @@
+This file tests for book in various places, such as
+book at the beginning of a line or
+at the end of a line book
+as well as the plural books and
+handbooks. Here are some
+phrases that use the word in different ways:
+"book of the year award"
+to look for a line with the word "book"
+A GREAT book!
+A great book? No.
+told them about (the books) until it
+Here are the books that you requested
+Yes, it is a good book for children
+amazing that it was called a "harmful book" when
+once you get to the end of the book, you can’t believe
+A well-written regular expression should
+avoid matching unrelated words,
+such as booky (is that a word?)
+and bookish and
+bookworm and so on.
