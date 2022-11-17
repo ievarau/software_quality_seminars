@@ -45,8 +45,8 @@ This folder contains the favourite plots of people. The plots were used to creat
 
 # Contact information
 
-If you have questions or concers, please contact:
+If you have questions or concerns, please contact:
 
 - [Kata Ferenc](https://github.com/ferenckata) : katalitf@uio.no
 - [Ieva Rauluseviciute](https://bitbucket.org/ievara/)     : ievarau@ncmm.uio.no
-- [Jaime A Castro-Mondragon](https://jaimicore.github.io/) : j.a.c.mondragon@ncmm.uio.no
+- [Jaime A Castro-Mondragon](https://jaimicore.github.io/) : jacmondragon@nykode.com
