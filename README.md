@@ -2,7 +2,7 @@
 
 This is a repo for scripts and documents that are related to the NCMM Software quality seminars.
 
-Last updated: 2022 January 13
+Last updated: 2022 November 17
 
 
 ```bash
@@ -39,6 +39,10 @@ This folder contains some script files created by different people in order to l
 ### rmarkdown_workshop
 
 This folder contains the favourite plots of people. The plots were used to create different RMarkdown documents during the workshop.
+
+### S4_R
+
+This folder contains the basics to use S4 class objects in R. It contains the code with a small presentation (in .Rmd).
 
 
 
