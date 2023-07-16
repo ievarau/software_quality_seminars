@@ -1,0 +1,192 @@
+# Plotting with ggplot2 #
+
+This document will demonstrate a few a little more advanced examples of plots with ggplot2.
+
+```{r loading_libraries, eval = TRUE, echo = TRUE, include = TRUE, cache = TRUE}
+
+required.libraries <- c("data.table",
+                        "ggplot2",
+                        "tidyverse",
+                        "ggseqlogo")
+
+for (lib in required.libraries) {
+    suppressPackageStartupMessages(library(lib, character.only = TRUE, quietly = T))
+}
+```
+
+## Plotting TF motifs on top of the plots ##
+
+```{r parameters_and_files, eval = TRUE, echo = TRUE, include = TRUE, cache = TRUE}
+
+## Conservation files:
+cons_file        <- "conservation_plot/CTCF_conservation.tsv"
+random_cons_file <- "conservation_plot/CTCF_conservation_random.tsv"
+
+## Motifs:
+cobinder_file <- "conservation_plot/cobinder_0.txt"
+core_file     <- "conservation_plot/core_0.txt"
+
+## Motif grammar:
+location <- "left"
+spacing  <- "13"
+
+```
+
+```{r reading_input, eval = TRUE, echo = TRUE, include = TRUE, cache = TRUE}
+
+## Conservation files:
+cons   <- data.table::fread(cons_file, header = FALSE)
+random <- data.table::fread(random_cons_file, header = FALSE)
+
+cons   <- cbind(cons, random[,2])
+colnames(cons) <- c("dist", "Observed", "Random")
+
+df <- cons %>%
+    dplyr::select(dist, Observed, Random) %>% 
+    gather(key = "Track", value = "value", -dist)
+
+## Motif files:
+cobinder_matrix <- data.table::fread(cobinder_file, header = FALSE)
+core_matrix     <- data.table::fread(core_file, header = FALSE)
+```
+
+```{r drawing_motif_logos, eval = TRUE, echo = TRUE, include = TRUE, cache = TRUE}
+
+## Cobinder matrix:
+colnames(cobinder_matrix) <- c("A", "C", "G", "T")
+cobinder_matrix <- t(cobinder_matrix)
+cobinder_logo <- ggplot() +
+    geom_logo(cobinder_matrix, method = 'bits', stack_width = 1) +
+    theme_logo() +
+    scale_x_continuous(expand = c(0, 0)) +
+    scale_y_continuous(limits = c(0,2), expand = c(0, 0)) +
+    theme(axis.text.x = element_blank(),
+            axis.title.y = element_blank(),
+            axis.text.y = element_blank(),
+            panel.grid = element_blank(),
+            axis.line=element_blank(),
+            axis.text = element_blank(),
+            axis.ticks=element_blank(),
+            axis.title = element_blank(),
+            panel.border=element_blank(), 
+            panel.spacing = unit(0, "cm"),
+            panel.grid.major=element_blank(),
+            panel.grid.minor=element_blank(),
+            plot.margin = margin(0, 0, 0, 0, "cm"))
+
+## Core matrix:
+colnames(core_matrix) <- c("A", "C", "G", "T")
+core_matrix <- t(core_matrix)
+core_logo   <- ggplot() +
+    geom_logo(core_matrix, method = 'bits', stack_width = 1) +
+    theme_logo() +
+    scale_x_continuous(expand = c(0, 0)) +
+    scale_y_continuous(limits = c(0,2), expand = c(0, 0)) +
+    theme(axis.text.x = element_blank(),
+        axis.title.y = element_blank(),
+        axis.text.y = element_blank(),
+        panel.grid = element_blank(),
+        axis.line=element_blank(),
+        axis.text = element_blank(),
+        axis.ticks=element_blank(),
+        axis.title = element_blank(),
+        panel.border=element_blank(), 
+        panel.spacing = unit(0, "cm"),
+        panel.grid.major=element_blank(),
+        panel.grid.minor=element_blank(),
+        plot.margin = margin(0, 0, 0, 0, "cm"))
+```
+
+```{r motif_locations, eval = TRUE, echo = TRUE, include = TRUE, cache = TRUE}
+
+cobinder_size <- ncol(cobinder_matrix)
+core_size     <- ncol(core_matrix)
+
+window_size   <- nrow(random)
+
+core_end   <- (core_size / 2)
+core_start <- ((-1 * core_size) / 2)
+
+if (location == "left") {
+    spacing       <- (-1 * as.numeric(spacing))
+    cobinder_size <- (-1 * cobinder_size)
+}
+
+cobinder_end   <- core_start + spacing
+cobinder_start <- cobinder_end + cobinder_size
+
+core_segment     <- data.frame(
+    x    = core_start,
+    xend = core_end,
+    y    = 0,
+    yend = 0)
+cobinder_segment <- data.frame(
+    x    = cobinder_start,
+    xend = cobinder_end,
+    y    = 0,
+    yend = 0)
+```
+
+```{r plotting_conservation, eval = TRUE, echo = TRUE, include = TRUE, cache = TRUE}
+
+colors <- c("#ae017e", "#bdbdbd")
+
+## Conservation base plot:
+conservation_plot <- ggplot(
+        df, 
+        aes(x = dist, y = value)) + 
+    geom_line(aes(color = Track)) + 
+    scale_color_manual(values = colors) + 
+    theme_bw() + 
+    xlab("Distance from feature") + 
+    ylab("Conservation score") +
+    geom_segment(data = core_segment,
+                aes(x = x, y = y, yend = yend, xend = xend),
+                inherit.aes = FALSE,
+                colour = "red", linewidth = 2,
+                show.legend = NA) +
+    geom_segment(data = cobinder_segment,
+                aes(x = x, y = y, yend = yend, xend = xend),
+                inherit.aes = FALSE,
+                colour = "darkgreen", linewidth = 2) +
+    theme(legend.position = "bottom") +
+    theme(
+        plot.title = element_text(size = 14),
+        axis.title = element_text(size = 16, colour = "black"),
+        axis.text = element_text(size = 14, colour = "black")
+    )
+
+## This function allows us to specify which facet to annotate
+annotation_custom2 <- function(
+    grob, 
+    xmin = -Inf, 
+    xmax = Inf, 
+    ymin = -Inf, 
+    ymax = Inf, 
+    data) {
+    layer(data = data, stat = StatIdentity, position = PositionIdentity, 
+            geom = ggplot2:::GeomCustomAnn,
+            inherit.aes = TRUE, params = list(grob = grob, 
+                                            xmin = xmin, xmax = xmax, 
+                                            ymin = ymin, ymax = ymax))
+}
+
+## Adding motifs to the plot:
+conservation_plot <- conservation_plot +
+    annotation_custom(ggplotGrob(core_logo),
+                    xmin = core_segment$x, xmax = core_segment$xend,
+                    ymin = 0.0005, ymax = round(max(df$value)/12, 2)) +
+    annotation_custom(ggplotGrob(cobinder_logo),
+                    xmin = cobinder_segment$x, xmax = cobinder_segment$xend,
+                    ymin = 0.0005, ymax = round(max(df$value)/12, 2))
+
+```
+
+```{ r display_conservation_plot, eval = TRUE, echo = TRUE, include = TRUE, cache = TRUE, fig.cap = "**Figure 1. Conservation plot with visualized motifs and their locations**", fig.align = "center", fig.height = 6, fig.width = 7}
+
+conservation_plot
+
+```
+
+
+## Plotting PNG images in the plots ##
