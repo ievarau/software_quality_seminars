@@ -1,10 +1,41 @@
+---
+title: "More advanced plotting with ggplot2"
+date: 'Date: `r Sys.Date()`'
+subtitle: Code and comments
+output:
+  html_document:
+    pandoc_args:
+    - +RTS
+    - "-K4000m"
+    - "-RTS"
+    toc: yes
+    toc_depth: 3
+    toc_float: yes
+    theme: cerulean
+  pdf_document:
+    toc: yes
+    toc_depth: '3'
+geometry: margin = 1cm
+---
+
 # Plotting with ggplot2 #
 
-This document will demonstrate a few a little more advanced examples of plots with ggplot2.
+This document will demonstrate a few a little more advanced examples of plots drawn using ggplot2. These example include:
 
-```{r loading_libraries, eval = TRUE, echo = TRUE, include = TRUE, cache = TRUE}
+1. Conservation plot:
+    
+    * Annotating the plot with line segments.
+    * Plotting sequence motifs from the matrix and visualizing them within the plot.
 
-required.libraries <- c("data.table",
+2. A composite plots that includes images:
+
+    * Automatically plotting images.
+    * Combining images with plots.
+
+```{r loading_libraries, eval = TRUE, echo = FALSE, include = TRUE, cache = TRUE}
+
+required.libraries <- c("cowplot",
+                        "data.table",
                         "ggplot2",
                         "tidyverse",
                         "ggseqlogo")
@@ -14,7 +45,9 @@ for (lib in required.libraries) {
 }
 ```
 
-## Plotting TF motifs on top of the plots ##
+## Plotting TF motifs within the plot ##
+
+We will need a few files and parameters. They are defined bellow:
 
 ```{r parameters_and_files, eval = TRUE, echo = TRUE, include = TRUE, cache = TRUE}
 
@@ -31,6 +64,8 @@ location <- "left"
 spacing  <- "13"
 
 ```
+
+We read all input files:
 
 ```{r reading_input, eval = TRUE, echo = TRUE, include = TRUE, cache = TRUE}
 
@@ -50,7 +85,84 @@ cobinder_matrix <- data.table::fread(cobinder_file, header = FALSE)
 core_matrix     <- data.table::fread(core_file, header = FALSE)
 ```
 
-```{r drawing_motif_logos, eval = TRUE, echo = TRUE, include = TRUE, cache = TRUE}
+We are now plotting the conservation tracks only without any annotations.
+
+```{r plotting_conservation, eval = TRUE, echo = TRUE, include = TRUE, cache = TRUE, fig.cap = "**Figure 1A. Conservation plot**", fig.align = "center", fig.height = 6, fig.width = 7, warning = FALSE}
+
+colors <- c("#ae017e", "#bdbdbd")
+
+## Conservation base plot:
+conservation_plot <- ggplot(
+        df, 
+        aes(x = dist, y = value)) + 
+    geom_line(aes(color = Track)) + 
+    scale_color_manual(values = colors) + 
+    theme_bw() + 
+    xlab("Distance from feature") + 
+    ylab("Conservation score") +
+    theme(legend.position = "bottom") +
+    theme(
+        plot.title = element_text(size = 14),
+        axis.title = element_text(size = 16, colour = "black"),
+        axis.text = element_text(size = 14, colour = "black")
+    )
+
+conservation_plot
+```
+
+We need to define the locations of our annotations and motif plots. We define them using parameters for core and cobinder.
+
+```{r motif_locations, eval = TRUE, echo = TRUE, include = TRUE, cache = TRUE}
+
+cobinder_size <- ncol(cobinder_matrix)
+core_size     <- ncol(core_matrix)
+
+window_size   <- nrow(random)
+
+core_end   <- (core_size / 2)
+core_start <- ((-1 * core_size) / 2)
+
+if (location == "left") {
+    spacing       <- (-1 * as.numeric(spacing))
+    cobinder_size <- (-1 * cobinder_size)
+}
+
+cobinder_end   <- core_start + spacing
+cobinder_start <- cobinder_end + cobinder_size
+
+core_segment     <- data.frame(
+    x    = core_start,
+    xend = core_end,
+    y    = 0,
+    yend = 0)
+cobinder_segment <- data.frame(
+    x    = cobinder_start,
+    xend = cobinder_end,
+    y    = 0,
+    yend = 0)
+```
+
+We annotate motif locations with segments in different colours.
+
+```{r plotting_motif_locations, eval = TRUE, echo = TRUE, include = TRUE, cache = TRUE, fig.cap = "**Figure 2. Conservation plot with specified motif locations**", fig.align = "center", fig.height = 6, fig.width = 7, warning = FALSE}
+
+conservation_plot <- conservation_plot +
+    geom_segment(data = core_segment,
+                aes(x = x, y = y, yend = yend, xend = xend),
+                inherit.aes = FALSE,
+                colour = "red", linewidth = 2,
+                show.legend = NA) +
+    geom_segment(data = cobinder_segment,
+                aes(x = x, y = y, yend = yend, xend = xend),
+                inherit.aes = FALSE,
+                colour = "darkgreen", linewidth = 2)
+
+conservation_plot
+```
+
+We will draw our motif logos from the matrices (read above). These individual plots will be then used to insert on the conservation track plots.
+
+```{r drawing_motif_logos, eval = TRUE, echo = TRUE, include = TRUE, cache = TRUE, fig.cap = "**Figure 3. Motif logos**. **A** - core, **B** - cobinder", fig.align = "center", fig.height = 6, fig.width = 7, warning = FALSE}
 
 ## Cobinder matrix:
 colnames(cobinder_matrix) <- c("A", "C", "G", "T")
@@ -95,66 +207,17 @@ core_logo   <- ggplot() +
         panel.grid.major=element_blank(),
         panel.grid.minor=element_blank(),
         plot.margin = margin(0, 0, 0, 0, "cm"))
+
+## Combining plot for display:
+combined_plot <- cowplot::plot_grid(
+    core_logo, cobinder_logo,
+    labels = c("A", "B"),
+    ncol = 1, nrow = 2)
+
+combined_plot
 ```
 
-```{r motif_locations, eval = TRUE, echo = TRUE, include = TRUE, cache = TRUE}
-
-cobinder_size <- ncol(cobinder_matrix)
-core_size     <- ncol(core_matrix)
-
-window_size   <- nrow(random)
-
-core_end   <- (core_size / 2)
-core_start <- ((-1 * core_size) / 2)
-
-if (location == "left") {
-    spacing       <- (-1 * as.numeric(spacing))
-    cobinder_size <- (-1 * cobinder_size)
-}
-
-cobinder_end   <- core_start + spacing
-cobinder_start <- cobinder_end + cobinder_size
-
-core_segment     <- data.frame(
-    x    = core_start,
-    xend = core_end,
-    y    = 0,
-    yend = 0)
-cobinder_segment <- data.frame(
-    x    = cobinder_start,
-    xend = cobinder_end,
-    y    = 0,
-    yend = 0)
-```
-
-```{r plotting_conservation, eval = TRUE, echo = TRUE, include = TRUE, cache = TRUE}
-
-colors <- c("#ae017e", "#bdbdbd")
-
-## Conservation base plot:
-conservation_plot <- ggplot(
-        df, 
-        aes(x = dist, y = value)) + 
-    geom_line(aes(color = Track)) + 
-    scale_color_manual(values = colors) + 
-    theme_bw() + 
-    xlab("Distance from feature") + 
-    ylab("Conservation score") +
-    geom_segment(data = core_segment,
-                aes(x = x, y = y, yend = yend, xend = xend),
-                inherit.aes = FALSE,
-                colour = "red", linewidth = 2,
-                show.legend = NA) +
-    geom_segment(data = cobinder_segment,
-                aes(x = x, y = y, yend = yend, xend = xend),
-                inherit.aes = FALSE,
-                colour = "darkgreen", linewidth = 2) +
-    theme(legend.position = "bottom") +
-    theme(
-        plot.title = element_text(size = 14),
-        axis.title = element_text(size = 16, colour = "black"),
-        axis.text = element_text(size = 14, colour = "black")
-    )
+```{r adding_motifs, eval = TRUE, echo = TRUE, include = TRUE, cache = TRUE, fig.cap = "**Figure 4. Conservation plot with visualized motifs and their locations**", fig.align = "center", fig.height = 6, fig.width = 7}
 
 ## This function allows us to specify which facet to annotate
 annotation_custom2 <- function(
@@ -180,12 +243,7 @@ conservation_plot <- conservation_plot +
                     xmin = cobinder_segment$x, xmax = cobinder_segment$xend,
                     ymin = 0.0005, ymax = round(max(df$value)/12, 2))
 
-```
-
-```{ r display_conservation_plot, eval = TRUE, echo = TRUE, include = TRUE, cache = TRUE, fig.cap = "**Figure 1. Conservation plot with visualized motifs and their locations**", fig.align = "center", fig.height = 6, fig.width = 7}
-
 conservation_plot
-
 ```
 
 
