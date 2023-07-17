@@ -3,18 +3,18 @@ title: "More advanced plotting with ggplot2"
 date: 'Date: `r Sys.Date()`'
 subtitle: Code and comments
 output:
-  html_document:
-    pandoc_args:
-    - +RTS
-    - "-K4000m"
-    - "-RTS"
-    toc: yes
-    toc_depth: 3
-    toc_float: yes
-    theme: cerulean
-  pdf_document:
-    toc: yes
-    toc_depth: '3'
+    html_document:
+        pandoc_args:
+        - +RTS
+        - "-K4000m"
+        - "-RTS"
+        toc: yes
+        toc_depth: 3
+        toc_float: yes
+        theme: cerulean
+    pdf_document:
+        toc: yes
+        toc_depth: '3'
 geometry: margin = 1cm
 ---
 
@@ -38,16 +38,32 @@ required.libraries <- c("cowplot",
                         "data.table",
                         "ggplot2",
                         "tidyverse",
-                        "ggseqlogo")
+                        "png",
+                        "ggseqlogo",
+                        "ggrepel")
 
 for (lib in required.libraries) {
     suppressPackageStartupMessages(library(lib, character.only = TRUE, quietly = T))
 }
+
+
+ggplot2::theme_set(
+    theme_bw() +
+        theme(
+            plot.title = element_text(size = 14),
+            axis.title = element_text(size = 16, colour = "black"),
+            axis.text = element_text(size = 14, colour = "black")
+        )
+)
 ```
 
 ## Plotting TF motifs within the plot ##
 
-We will need a few files and parameters. They are defined bellow:
+This is the conservation plot example, where line-plot is annotated with coloured lines and motif logos to indicate the location of the TF binding motif. Each step will be executed and visualized.
+
+### Input ###
+
+In the beginning, we will need a few files and parameters. Conservation files for real and random observations as well as core and co-binder motif matrices that will be used to plot the motifs. Motif location is defined as a parameter here.
 
 ```{r parameters_and_files, eval = TRUE, echo = TRUE, include = TRUE, cache = TRUE}
 
@@ -62,7 +78,6 @@ core_file     <- "conservation_plot/core_0.txt"
 ## Motif grammar:
 location <- "left"
 spacing  <- "13"
-
 ```
 
 We read all input files:
@@ -73,10 +88,10 @@ We read all input files:
 cons   <- data.table::fread(cons_file, header = FALSE)
 random <- data.table::fread(random_cons_file, header = FALSE)
 
-cons   <- cbind(cons, random[,2])
-colnames(cons) <- c("dist", "Observed", "Random")
+df   <- cbind(cons, random[,2])
+colnames(df) <- c("dist", "Observed", "Random")
 
-df <- cons %>%
+df <- df %>%
     dplyr::select(dist, Observed, Random) %>% 
     gather(key = "Track", value = "value", -dist)
 
@@ -85,9 +100,35 @@ cobinder_matrix <- data.table::fread(cobinder_file, header = FALSE)
 core_matrix     <- data.table::fread(core_file, header = FALSE)
 ```
 
+Below you can see how unprocessed conservation input table looks like. We take two of these tables and put them in a single dataframe that is used later in plotting.
+
+```{r visualize_conservation_data, eval = TRUE, echo = FALSE, include = TRUE, cache = TRUE, fig.cap = "**Table 1. Conservation data**. Example table with real observations", fig.align = "center", fig.height = 6, fig.width = 7}
+
+DT::datatable(
+    cons,
+    style = "default",
+    rownames = FALSE,
+    options = list(
+        scrollX = TRUE))
+```
+
+Below is an example of the motif matrix format that is used in this plotting. It is later processed to fulfill `ggseqlogo` requirements.
+
+```{r visualize_motif_data, eval = TRUE, echo = FALSE, include = TRUE, cache = TRUE, fig.cap = "**Table 2. Motif data**. Example of a core motif", fig.align = "center", fig.height = 6, fig.width = 7}
+
+DT::datatable(
+    core_matrix,
+    style = "default",
+    rownames = FALSE,
+    options = list(
+        scrollX = TRUE))
+```
+
+### Plotting conservation data ###
+
 We are now plotting the conservation tracks only without any annotations.
 
-```{r plotting_conservation, eval = TRUE, echo = TRUE, include = TRUE, cache = TRUE, fig.cap = "**Figure 1A. Conservation plot**", fig.align = "center", fig.height = 6, fig.width = 7, warning = FALSE}
+```{r plotting_conservation, eval = TRUE, echo = TRUE, include = TRUE, cache = TRUE, fig.cap = "**Figure 1. Conservation plot**", fig.align = "center", fig.height = 6, fig.width = 7, warning = FALSE}
 
 colors <- c("#ae017e", "#bdbdbd")
 
@@ -110,12 +151,14 @@ conservation_plot <- ggplot(
 conservation_plot
 ```
 
+### Annotating the plot ###
+
 We need to define the locations of our annotations and motif plots. We define them using parameters for core and cobinder.
 
 ```{r motif_locations, eval = TRUE, echo = TRUE, include = TRUE, cache = TRUE}
 
-cobinder_size <- ncol(cobinder_matrix)
-core_size     <- ncol(core_matrix)
+cobinder_size <- nrow(cobinder_matrix)
+core_size     <- nrow(core_matrix)
 
 window_size   <- nrow(random)
 
@@ -160,53 +203,40 @@ conservation_plot <- conservation_plot +
 conservation_plot
 ```
 
-We will draw our motif logos from the matrices (read above). These individual plots will be then used to insert on the conservation track plots.
+We will draw our motif logos from the matrices. We want these logos to be very minimalistic - without axis lines or text. These individual motif plots will be then used to insert on the conservation track plots.
 
 ```{r drawing_motif_logos, eval = TRUE, echo = TRUE, include = TRUE, cache = TRUE, fig.cap = "**Figure 3. Motif logos**. **A** - core, **B** - cobinder", fig.align = "center", fig.height = 6, fig.width = 7, warning = FALSE}
 
+plot_motif <- function(motif_matrix) {
+    motif_logo <- ggplot() +
+        geom_logo(motif_matrix, method = 'bits', stack_width = 1) +
+        theme_logo() +
+        scale_x_continuous(expand = c(0, 0)) +
+        scale_y_continuous(limits = c(0,2), expand = c(0, 0)) +
+        theme(axis.text.x = element_blank(),
+                axis.title.y = element_blank(),
+                axis.text.y = element_blank(),
+                panel.grid = element_blank(),
+                axis.line=element_blank(),
+                axis.text = element_blank(),
+                axis.ticks=element_blank(),
+                axis.title = element_blank(),
+                panel.border=element_blank(), 
+                panel.spacing = unit(0, "cm"),
+                panel.grid.major=element_blank(),
+                panel.grid.minor=element_blank(),
+                plot.margin = margin(0, 0, 0, 0, "cm"))
+    return(motif_logo)
+}
 ## Cobinder matrix:
 colnames(cobinder_matrix) <- c("A", "C", "G", "T")
 cobinder_matrix <- t(cobinder_matrix)
-cobinder_logo <- ggplot() +
-    geom_logo(cobinder_matrix, method = 'bits', stack_width = 1) +
-    theme_logo() +
-    scale_x_continuous(expand = c(0, 0)) +
-    scale_y_continuous(limits = c(0,2), expand = c(0, 0)) +
-    theme(axis.text.x = element_blank(),
-            axis.title.y = element_blank(),
-            axis.text.y = element_blank(),
-            panel.grid = element_blank(),
-            axis.line=element_blank(),
-            axis.text = element_blank(),
-            axis.ticks=element_blank(),
-            axis.title = element_blank(),
-            panel.border=element_blank(), 
-            panel.spacing = unit(0, "cm"),
-            panel.grid.major=element_blank(),
-            panel.grid.minor=element_blank(),
-            plot.margin = margin(0, 0, 0, 0, "cm"))
+cobinder_logo   <- plot_motif(cobinder_matrix)
 
 ## Core matrix:
 colnames(core_matrix) <- c("A", "C", "G", "T")
 core_matrix <- t(core_matrix)
-core_logo   <- ggplot() +
-    geom_logo(core_matrix, method = 'bits', stack_width = 1) +
-    theme_logo() +
-    scale_x_continuous(expand = c(0, 0)) +
-    scale_y_continuous(limits = c(0,2), expand = c(0, 0)) +
-    theme(axis.text.x = element_blank(),
-        axis.title.y = element_blank(),
-        axis.text.y = element_blank(),
-        panel.grid = element_blank(),
-        axis.line=element_blank(),
-        axis.text = element_blank(),
-        axis.ticks=element_blank(),
-        axis.title = element_blank(),
-        panel.border=element_blank(), 
-        panel.spacing = unit(0, "cm"),
-        panel.grid.major=element_blank(),
-        panel.grid.minor=element_blank(),
-        plot.margin = margin(0, 0, 0, 0, "cm"))
+core_logo   <- plot_motif(core_matrix)
 
 ## Combining plot for display:
 combined_plot <- cowplot::plot_grid(
@@ -217,34 +247,259 @@ combined_plot <- cowplot::plot_grid(
 combined_plot
 ```
 
-```{r adding_motifs, eval = TRUE, echo = TRUE, include = TRUE, cache = TRUE, fig.cap = "**Figure 4. Conservation plot with visualized motifs and their locations**", fig.align = "center", fig.height = 6, fig.width = 7}
+To insert motifs onto the conservation plot, we will use a function that creates a layer with the motif that can be added with `+`. You can read more information about the `annotation_custom` function [here](https://ggplot2.tidyverse.org/reference/annotation_custom.html). Motif logo plots are inserted as [grobs](https://genviz.org/module-07-appendix/0007/01/01/advancedggplot2/#:~:text=First%20off%20a%20grob%20is,because%20ggplot2%20uses%20grid%20underneath.). `grob` is short for `grid graphical object` and is a set of instruction to create a graphical object. `ggplot2` uses grobs behind the scenes, so it is good to be aware of them.
 
-## This function allows us to specify which facet to annotate
-annotation_custom2 <- function(
-    grob, 
-    xmin = -Inf, 
-    xmax = Inf, 
-    ymin = -Inf, 
-    ymax = Inf, 
-    data) {
-    layer(data = data, stat = StatIdentity, position = PositionIdentity, 
-            geom = ggplot2:::GeomCustomAnn,
-            inherit.aes = TRUE, params = list(grob = grob, 
-                                            xmin = xmin, xmax = xmax, 
-                                            ymin = ymin, ymax = ymax))
-}
+```{r adding_motifs, eval = TRUE, echo = TRUE, include = TRUE, cache = TRUE, fig.cap = "**Figure 4. Conservation plot with visualized motifs and their locations**", fig.align = "center", fig.height = 6, fig.width = 7, warning = FALSE}
 
 ## Adding motifs to the plot:
 conservation_plot <- conservation_plot +
-    annotation_custom(ggplotGrob(core_logo),
-                    xmin = core_segment$x, xmax = core_segment$xend,
-                    ymin = 0.0005, ymax = round(max(df$value)/12, 2)) +
-    annotation_custom(ggplotGrob(cobinder_logo),
-                    xmin = cobinder_segment$x, xmax = cobinder_segment$xend,
-                    ymin = 0.0005, ymax = round(max(df$value)/12, 2))
+    annotation_custom(
+        ggplotGrob(core_logo),
+        xmin = core_segment$x, 
+        xmax = core_segment$xend,
+        ymin = 0.0005,
+        ymax = round(max(df$value)/12, 2)) +
+    annotation_custom(
+        ggplotGrob(cobinder_logo),
+        xmin = cobinder_segment$x,
+        xmax = cobinder_segment$xend,
+        ymin = 0.0005,
+        ymax = round(max(df$value)/12, 2))
 
 conservation_plot
+
+## Expporting the plot:
+ggsave(
+    plot      = conservation_plot,
+    filename  = file.path("conservation_plot_example_with_annotations.pdf"),
+    width     = 7,
+    height    = 6,
+    limitsize = FALSE)
 ```
 
 
 ## Plotting PNG images in the plots ##
+
+In the second example, we will see how one can plot images in  `png` format onto the plot or make a composite plot to view the results in a convenient way.
+
+### Input ###
+
+As input we use pre-processed data frame with information on PPI matches and motif similarities between a motif of interest and libraries of known motifs and PPI data.
+
+```{r input_data_for_ppi_plot, eval = TRUE, echo = TRUE, include = TRUE, cache = TRUE}
+
+ppi_table_path <- "ppi_plot/PPI_tab.tsv"
+
+ppi_table <- data.table::fread(ppi_table_path, header = TRUE)
+
+```
+
+```{r visualize_ppi_data, eval = TRUE, echo = FALSE, include = TRUE, cache = TRUE, fig.cap = "**Table 3. PPI analysis results**. Example of PPI and motif similarity analysis results", fig.align = "center", fig.height = 6, fig.width = 7}
+
+DT::datatable(
+    ppi_table,
+    style = "default",
+    rownames = FALSE,
+    options = list(
+        scrollX = TRUE))
+```
+
+### Plotting PPI and motif similarity ###
+
+We plot PPI plot without annotations, but we colour the points.
+
+```{r plot_ppi_results, eval = TRUE, echo = TRUE, include = TRUE, cache = TRUE, fig.cap = "**Figure 5. PPI plot**. Without annotations, just colouring", fig.align = "center", fig.height = 8, fig.width = 6, warning = FALSE}
+
+ppi_plot <- ggplot(
+    ppi_table, 
+    aes(
+        x     = combined_score,
+        y     = log10_p_value,
+        label = pair_label)) +
+    geom_point(
+        aes(
+            color = dplyr::case_when(
+                ppi_table$log10_p_value  < -log10(0.05) ~ "grey",
+                ppi_table$combined_score >= 500 ~ "#c51b8a",
+                ppi_table$combined_score < 500 ~ "#fa9fb5")),
+            size        = 3,
+            show.legend = TRUE) +
+    scale_color_identity(
+        name   = "Significance",
+        breaks = c("grey", "#c51b8a", "#fa9fb5"),
+        labels = c("p-value > 0.05", "PPI >= 500", "PPI < 500"),
+        guide  = "legend") +
+    xlab("Combined PPI score") +
+    ylab("Motif similarity [-log10(p-value)]") +
+    theme(legend.position = "bottom")
+
+ppi_plot
+```
+
+### Selectively plotting point labels ###
+
+We add annotations for the most interesting points in the plot - top most significant motif matches with highest and lowest PPI scores. For this we use `geom_text_repel`, so the labels do not overlap. We will do data filtering withing ggplot command.
+
+```{r plot_ppi_results_with_point_labels, eval = TRUE, echo = TRUE, include = TRUE, cache = TRUE, fig.cap = "**Figure 5. PPI plot**. With top points annotations", fig.align = "center", fig.height = 8, fig.width = 6, warning = FALSE}
+
+n_align <- 5 ## Number of matches to annotate
+
+ppi_plot <- ppi_plot +
+    geom_text_repel(
+        data          = top_n(
+            ppi_table[(ppi_table$log10_p_value  > -log10(0.05)) & (ppi_table$combined_score >= 500), ],
+            as.numeric(n_align),
+            log10_p_value),
+        size          = 4,
+        box.padding   = 1.5,
+        point.padding = 0.3,
+        segment.size  = 0.3,
+        segment.color = "grey50") +
+    geom_text_repel(
+        data          = top_n(
+            ppi_table[(ppi_table$log10_p_value > -log10(0.05)) & (ppi_table$combined_score < 500), ],
+            as.numeric(n_align), 
+            log10_p_value),
+        size          = 4,
+        box.padding   = 1.5,
+        point.padding = 0.3,
+        segment.size  = 0.3,
+        segment.color = "grey50")
+
+ppi_plot
+```
+
+### Annotating plots with motif alignment images ###
+
+To annotate the plot with logos we need to prepare some data for those logo images to be inserted into. For this we build a data frame with top logo information, we extract the path to the images and we define the order of their appearance in the plot.
+
+```{r preparing_motif_image_data, eval = TRUE, echo = TRUE, include = TRUE, cache = TRUE}
+
+match_images          <- rbind(
+    ppi_table[(ppi_table$log10_p_value > -log10(0.05)) & (ppi_table$combined_score >= 500), ][1:n_align, ],
+    ppi_table[(ppi_table$log10_p_value) > -log10(0.05) & (ppi_table$combined_score < 500), ][1:n_align, ]
+)
+match_images          <- match_images[!is.na(match_images$alignment_png), ]
+match_alignment_paths <- match_images
+match_images          <- match_images %>%
+                            dplyr::select(-alignment_png) %>%
+                            unique()
+    
+match_images   <- match_images %>%
+                mutate(freq  = 1) %>%
+                mutate(label = paste0(
+                    stringr::str_split_fixed(pair_label, "::", n = 2)[,2],
+                    "\n(", 
+                    cobinder_motif_id,
+                    ")\n\n", 
+                    gsub(cobinder_id, pattern = "cobinder_", replacement = "Co-binding "),
+                    "\n")) %>%
+                arrange(log10_p_value)
+align_order    <- unique(as.vector(match_images$label))
+
+```
+
+```{r show_motif_alignment_info, eval = TRUE, echo = FALSE, include = TRUE, cache = TRUE, fig.cap = "**Table 4. Motif alignment information**. This table will be used to plot the images", fig.align = "center", fig.height = 6, fig.width = 7}
+
+DT::datatable(
+    match_images,
+    style = "default",
+    rownames = FALSE,
+    options = list(
+        scrollX = TRUE))
+```
+
+To plot the images, we need to build an empty plot with the data that we can use as coordinates for logo insertion. We will plot this empty plot from the data frame we build in earlier step.
+
+```{r drawing_empty_plot, eval = TRUE, echo = TRUE, include = TRUE, cache = TRUE, fig.cap = "**Figure 6. Tile plot that will be used to insert logos**", fig.align = "center", fig.height = 9, fig.width = 11, warning = FALSE}
+
+empty_tile_plot <- ggplot(
+    data  = match_images,
+    aes(
+        x = as.numeric(freq),
+        y = label,
+        fill = "A")) +
+    geom_tile(
+        color = "black",
+        fill = "white",
+        size = 0.7,
+        aes(width = 2, height = 1)) +
+    coord_equal(clip = "off") +
+    scale_y_discrete(limits = align_order) +
+    scale_x_continuous(limits = c(0, 2), breaks = c(0, 1))
+
+empty_tile_plot
+```
+
+Now we will insert logos one by one, based on the tile plot we built above. To insert `png` image we need to read it first, for which we use `png` R library. Then we use `annotation_raster` [function](https://ggplot2.tidyverse.org/reference/annotation_raster.html) from `ggplot2` to insert images one-by-one. Since all alignment logos are assumed to be of same dimensions, it is quite easy to determine their coordinates (we made these assumptions when building the dataframe).
+
+```{r inserting_logos_into_tile_plot, eval = TRUE, echo = TRUE, include = TRUE, cache = TRUE, fig.cap = "**Figure 7. Tile plot with inserted logos**", fig.align = "center", fig.height = 9, fig.width = 11, warning = FALSE}
+
+## Selecting only necessary columns:
+match_images <- match_images %>%
+    dplyr::select(cobinder_motif_id,
+                    label) %>%
+    unique()
+
+## Inerting logo one-by-one:
+plotted_logos <- empty_tile_plot
+
+for (k in 1:nrow(match_images)) {
+
+    motif_info <- match_images[k, ]
+    alignment  <- match_alignment_paths[grepl(
+        pattern = motif_info$cobinder_motif_id,
+        x       = match_alignment_paths$cobinder_motif_id), ]
+    logo       <- alignment$alignment_png[1]
+    logo.png   <- png::readPNG(logo)
+
+    plotted_logos <- plotted_logos +
+        ggplot2::annotation_raster(
+            logo.png,
+            xmin = 0.01, xmax = 1.99,
+            ymin = k - 0.49, ymax = k + 0.49)
+}
+
+plotted_logos
+```
+
+We want to polish this tile plot with motifs a little bit, so we remove axis titles and choose an "empty" theme.
+
+```{r tidy_up_motif_plot, eval = TRUE, echo = TRUE, include = TRUE, cache = TRUE, fig.cap = "**Figure 8. Polished tile plot with inserted logos**", fig.align = "center", fig.height = 8, fig.width = 11, warning = FALSE}
+
+plotted_logos <- plotted_logos +
+    theme_void() +
+    theme(
+        axis.text.y = element_text(colour = "black"),
+        axis.title.x = element_blank())
+
+plotted_logos
+```
+
+Now we will combine the PPI plot with out plotted logos to generate final plot.
+
+```{r generate_and_export_final_ppi_plot, eval = TRUE, echo = TRUE, include = TRUE, cache = TRUE, fig.cap = "**Figure 9. Final PPI plot with logo annotations.**", fig.align = "center", fig.height = 8, fig.width = 11, warning = FALSE}
+
+ppi_plot_with_logos <- plot_grid(
+    ppi_plot, plotted_logos,
+    ncol = 2,
+    nrow = 1,
+    rel_widths = c(1, 0.9),
+    align = "h",
+    axis = "tblr"
+)
+
+ppi_plot_with_logos
+
+## Expporting the plot:
+ggsave(
+    plot      = conservation_plot,
+    filename  = file.path("ppi_plot_with_logo_annotations.pdf"),
+    width     = 7,
+    height    = 6,
+    limitsize = FALSE)
+
+```
+
+
+<!-- End of report -->
