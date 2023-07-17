@@ -44,8 +44,9 @@ This folder contains the favourite plots of people. The plots were used to creat
 
 This folder contains the basics to use S4 class objects in R. It contains the code with a small presentation (in .Rmd).
 
+### ggplot_advanced_plotting_part1 ###
 
-
+This folder contains the `.rmd` files that generates an `html` report (also in the folder) with examples and instructions on how to generate two more advanced plots with `ggplot2`. This involves ploting sequence motifs and inserting images, also combining plots.
 
 # Contact information
 
