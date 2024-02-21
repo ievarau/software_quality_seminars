@@ -77,20 +77,36 @@ show(umapPlot)
 
 ## Reading the data:
 umapdata <- data.table::fread(
-    "ine/umapdata.tsv",
-    header = TRUE)
+    "plotting_discussion/ine/umapdata.tsv",
+    header = TRUE,
+    sep = "\t")
 umapdata <- as.data.frame(umapdata) %>%
     dplyr::mutate(celltypes = gsub(celltypes, pattern = "cells", replacement = " cells"))
-## For plotting I am not sure this is neccessary:
-rownames(umapdata) <- umapdata$V1 
-umapdata$V1 <- NULL
-head(umapdata)
+
+# ## For plotting I am not sure this is neccessary:
+# rownames(umapdata) <- umapdata$V1 
+# umapdata$V1 <- NULL
+# head(umapdata)
 
 umapdata$celltypes <- as.factor(umapdata$celltypes)
 
 ## Creatting a "palette" of shapes:
 shapes_pal <- c(0:14)
 
+## Making colour paletter for cell types:
+celltypes_palette <- RColorBrewer::brewer.pal(9, "Set1")
+celltypes_palette <- celltypes_palette[!celltypes_palette %in% c("#FFFF33")]
+celltypes_palette <- celltypes_palette[1:(length(unique(umapdata$celltypes)))]
+
+scale_color_celltypes <- function(...){
+    ggplot2:::manual_scale(
+        'color',
+        values = setNames(celltypes_palette, sort(unique(umapdata$celltypes))),
+        name = "Cell type"
+    )
+}
+
+## Plotting:
 umapPlot_updated <- ggplot2::ggplot(
     umapdata,
     aes(
@@ -102,9 +118,7 @@ umapPlot_updated <- ggplot2::ggplot(
             shape = celltypes,
             color = celltypes),
         size = 3) +
-    scale_color_manual(
-        values = standard_colors,
-        name = "Cell type") +
+    scale_color_celltypes() +
     scale_shape_manual(
         values = shapes_pal[1:length(unique(umapdata$celltypes))],
         name = "Cell type") +
@@ -145,3 +159,76 @@ proportions_plot <- ggplot(allprops, aes(x = true_proportion, y = predicted_prop
     ylab("Predicted proportion")
 show(proportions_plot)
 ```
+
+
+
+```{r correlation_plot_updated}
+allprops <- data.table::fread(
+    "plotting_discussion/ine/proportions_for_correlationplot.tsv",
+    header = TRUE,
+    sep = "\t")
+head(allprops)
+
+ssize <- factor(allprops$sample_size, levels = unique(sort(allprops$sample_size)))
+# ssize <- factor(ssize, levels = c("5000", "10000", "15000"))
+my_formula <- y ~ x
+proportions_plot <- ggplot(
+        allprops, 
+        aes(
+            x = true_proportion, 
+            y = predicted_proportion,
+            color = ssize, 
+            shape = ssize)) + 
+    ggpmisc::stat_poly_line(formula = my_formula, se = FALSE) + 
+    # stat_smooth(method = "lm", se=FALSE,  formula = my_formula) +
+    facet_wrap(
+        ~celltype,
+        ncol = 3) +
+    geom_point(
+        size = 1) +
+    ggpmisc::stat_poly_eq() +
+    scale_x_continuous(breaks = seq(0, 1, by = 0.2))+
+    scale_y_continuous(breaks = seq(0, 1, by = 0.2))+
+    scale_shape_manual(
+        name = "Cell number input \nfor signature matrix",
+        values = c(0, 1, 2)) + 
+    scale_colour_manual(
+        name="Cell number input \nfor signature matrix",
+        values=c("#E41A1C", "#377EB8", "#4DAF4A")) +
+    theme(
+        axis.title.x = element_text(vjust = -0.8), 
+        axis.title.y = element_text(vjust = 1),
+        legend.direction = "vertical",
+        legend.text = element_text(size = 14),
+        legend.title = element_text(size = 14),
+        panel.border = element_rect(
+                colour = "black", 
+                fill = NA),
+        plot.caption = element_text(
+                size = 12,
+                hjust = 0),
+        legend.title.align = 0.5,
+        legend.position = c(0.95, 0),
+        legend.justification = c("right", "bottom"),
+        legend.box = "horizontal") +
+    guides(
+        shape = guide_legend(
+            override.aes = list(
+                    size = 3))) +
+    xlab("True proportion") +
+    ylab("Predicted proportion")
+proportions_plot
+
+ggsave(
+    proportions_plot,
+    file = "plotting_discussion/ine/correlation_plot.pdf",
+    height = 10,
+    width = 14,
+    limitsize = FALSE)
+
+```
+
+
+
+
+
