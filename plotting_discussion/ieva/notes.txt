@@ -1,0 +1,10 @@
+
+Tips&Tricks:
+- Draw a prototype by hand. Then see what data and geoms you need to make it happen.
+- Just google stuff. If there is some plot feature that you have seen in papers, most likely people did do that already and there will be some code example on the world wide web.
+- Start with basic layers. Make sure the data you want to see is there. Then keep adding colors, shapes and other details. Then make it aesthetically pleasing.
+
+
+Useful links:
+- https://github.com/cxli233/FriendsDontLetFriends : suggestions what not to do when visualizing the results. Particular examples and seems to be constantly updated.
+
