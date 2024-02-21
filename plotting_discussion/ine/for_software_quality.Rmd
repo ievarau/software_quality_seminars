@@ -1,0 +1,147 @@
+---
+title: "Retrieving and analyzing indegrees from cell-specific networks"
+subtitle: "Indegree clustering" 
+author:
+    - Ine Bonthuis
+date: 'Date: `r Sys.Date()`'
+output:
+    html_document:
+        toc: yes
+        toc_depth: 3
+        toc_float: yes
+        theme: cerulean
+        code_download: true
+    pdf_document:
+        toc: yes
+        toc_depth: '3'
+geometry: margin = 1cm
+---
+
+```{r load_packages}
+library(pbapply)
+library(irlba)
+library(ggplot2)
+library(patchwork)
+library(RColorBrewer)
+library(parallel)
+library(tidyverse)
+library(plyr)
+library(dplyr)
+library(tidyr)
+require(Metrics)
+library(data.table)
+```
+
+```{r standard_plotting_settings, eval = TRUE, echo = FALSE, include = TRUE, cache = TRUE}
+
+standard_colors <- RColorBrewer::brewer.pal(8, "Set1")
+umap_pal <- brewer.pal(7, "YlGnBu")
+
+ggplot2::theme_set(
+    theme_bw() +
+        theme(
+            plot.title = element_text(size = 14),
+            axis.title = element_text(size = 14, colour = "black"),
+            axis.text = element_text(size = 12, colour = "black")
+        )
+)
+
+```
+
+
+For the following umap plot, I'd like to distinguish the cell types based on both color and shapes, the shapes are useful because it allows for visualization of overlaps. But I didn't manage to get that into legend yet, so how can I put this in the legend?
+
+```{r umap}
+umapdata <- fread( "ine/umapdata.tsv")
+umapdata <- as.data.frame(umapdata)
+rownames(umapdata) <- umapdata$V1 
+umapdata$V1 <- NULL
+head(umapdata)
+
+umapdata$celltypes <- as.factor(umapdata$celltypes)
+
+celltypes <- umapdata$celltypes
+
+umapPlot <- ggplot(umapdata, aes(X1, X2, color = celltypes)) +
+    geom_point(shape = as.factor(celltypes), size = 3) +
+    theme_minimal() +
+    scale_color_manual(values = standard_colors)+
+    labs(title = 'UMAP', color = 'Cell type') + 
+    xlab('UMAP 1') +
+    ylab('UMAP 2') +
+    theme(legend.position = 'right') 
+show(umapPlot)
+```
+
+```{r updated_umap_plot}
+
+## Reading the data:
+umapdata <- data.table::fread(
+    "ine/umapdata.tsv",
+    header = TRUE)
+umapdata <- as.data.frame(umapdata) %>%
+    dplyr::mutate(celltypes = gsub(celltypes, pattern = "cells", replacement = " cells"))
+## For plotting I am not sure this is neccessary:
+rownames(umapdata) <- umapdata$V1 
+umapdata$V1 <- NULL
+head(umapdata)
+
+umapdata$celltypes <- as.factor(umapdata$celltypes)
+
+## Creatting a "palette" of shapes:
+shapes_pal <- c(0:14)
+
+umapPlot_updated <- ggplot2::ggplot(
+    umapdata,
+    aes(
+        x = X1,
+        y = X2, 
+        group = celltypes)) +
+    ggplot2::geom_point(
+        aes(
+            shape = celltypes,
+            color = celltypes),
+        size = 3) +
+    scale_color_manual(
+        values = standard_colors,
+        name = "Cell type") +
+    scale_shape_manual(
+        values = shapes_pal[1:length(unique(umapdata$celltypes))],
+        name = "Cell type") +
+    labs(
+        x = "UMAP 1",
+        y = "UMAP 2",
+        title = 'UMAP') + 
+    theme(legend.position = 'right') 
+umapPlot_updated
+```
+
+
+My next question is how to again generate a legend. Now the legend contains the correlation lines but not the shapes. Which for normal people seems fine. But I want to point out the difference. And I prefer to have the legend of the lines on top, so therefore I positioned it on the top right. 
+
+Next to that I was wondering if it would be possible to add a little table with all my R values to the faceted plot. I have seen examples online to put a little table in one of the corners of your plot, similar for every facet of a plot. But I would like to add just one table, next to the facets/panels.
+
+```{r correlation_plot}
+allprops <- fread("ine/proportions_for_correlationplot.tsv")
+head(allprops)
+
+ssize <- as.factor(allprops$sample_size)
+ssize <- factor(ssize, levels = c("5000", "10000", "15000"))
+
+proportions_plot <- ggplot(allprops, aes(x = true_proportion, y = predicted_proportion, col = ssize, shape = ssize)) + 
+    geom_point(alpha = 0.5)+
+    ggpmisc::stat_poly_line(formula = y ~ x, se = FALSE)+ 
+    facet_wrap(~celltype)+
+    scale_x_continuous(breaks = seq(0, 0.9, by = 0.2))+
+    scale_y_continuous(breaks = seq(0, 0.9, by = 0.2))+
+    scale_shape_manual(name = "Cell number input \nfor signature matrix",
+                        values = c(16, 17, 18)) + 
+    scale_colour_manual(name="Cell number input \nfor signature matrix",
+                        values=c("#E41A1C", "#377EB8", "#4DAF4A"))+
+    theme(legend.justification = "top", 
+        axis.title.x = element_text(vjust = -0.8), 
+        axis.title.y = element_text(vjust = 1))+
+    xlab("True proportion")+
+    ylab("Predicted proportion")
+show(proportions_plot)
+```
