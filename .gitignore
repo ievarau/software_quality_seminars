@@ -1,5 +1,20 @@
 # Files that we are not sure if we wanna add:
 ievas_results/not_sure_yet.txt
+.vscode/
+efficient_processing/
+ggplot_advanced_plotting_part1/advanced_plotting_with_ggplot2_cache/
+ggplot_advanced_plotting_part1/advanced_plotting_with_ggplot2_files/
+ggplot_advanced_plotting_part1/notes.r
+ggplot_advanced_plotting_part1/plot_conservation_facet_motif_borders.R
+ggplot_advanced_plotting_part1/plot_motif_to_ppi.R
+rmarkdown/Example_Rmd/Example.html
+rmarkdown/Example_Rmd/Example_cache/
+rmarkdown/Example_Rmd/Example_files/
+rmarkdown_hands-on/from_template/
+rmarkdown_hands-on/hands_on.pdf
+rmarkdown_hands-on/hands_on_cache/
+rmarkdown_hands-on/hands_on_files/
+tensorflow/
 # Byte-compiled / optimized / DLL files
 __pycache__/
 .Rhistory
