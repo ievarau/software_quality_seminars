@@ -18,18 +18,21 @@ geometry: margin = 1cm
 ---
 
 ```{r load_packages}
-library(pbapply)
-library(irlba)
-library(ggplot2)
-library(patchwork)
-library(RColorBrewer)
-library(parallel)
-library(tidyverse)
-library(plyr)
-library(dplyr)
-library(tidyr)
-require(Metrics)
-library(data.table)
+
+required.libraries <- c(
+    "ggplot2",
+    "RColorBrewer",
+    "parallel",
+    "tidyverse",
+    "plyr",
+    "dplyr",
+    "tidyr",
+    "data.table")
+
+for (lib in required.libraries) {
+    suppressPackageStartupMessages(library(lib, character.only = TRUE, quietly = T))
+}
+
 ```
 
 ```{r standard_plotting_settings, eval = TRUE, echo = FALSE, include = TRUE, cache = TRUE}
@@ -127,7 +130,13 @@ umapPlot_updated <- ggplot2::ggplot(
         y = "UMAP 2",
         title = 'UMAP') + 
     theme(legend.position = 'right') 
-umapPlot_updated
+
+ggsave(
+    umapPlot_updated,
+    file = "plotting_discussion/ine/umap_plot.pdf",
+    height = 10,
+    width = 10,
+    limitsize = FALSE)
 ```
 
 
@@ -180,7 +189,6 @@ proportions_plot <- ggplot(
             color = ssize, 
             shape = ssize)) + 
     ggpmisc::stat_poly_line(formula = my_formula, se = FALSE) + 
-    # stat_smooth(method = "lm", se=FALSE,  formula = my_formula) +
     facet_wrap(
         ~celltype,
         ncol = 3) +
@@ -217,7 +225,6 @@ proportions_plot <- ggplot(
                     size = 3))) +
     xlab("True proportion") +
     ylab("Predicted proportion")
-proportions_plot
 
 ggsave(
     proportions_plot,
