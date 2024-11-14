@@ -1,0 +1,509 @@
+---
+date: "Date: `r Sys.Date()`"
+output:
+  html_document:
+      toc: true
+      toc_depth: 3
+      toc_float: true
+      theme: cerulean
+geometry: margin = 2cm
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+
+required.libraries <- c("cowplot",
+                        "data.table",
+                        "IRanges",
+                        "rmarkdown",
+                        "tidyverse")
+
+for (lib in required.libraries) {
+  suppressPackageStartupMessages(library(lib, character.only = TRUE, quietly = T))
+}
+
+# Load utilities
+source(file = "Utilities.R")
+
+# Load table with protease clavage results
+proteasome.cleavage.results <- fread("data/Proteasome_cleavage_results.txt") |> 
+                                within(rm(cleaved))
+```
+
+
+## Define a S4 class
+
+Lets define an `S4` class containing the files needed for the analysis of protein cleavage sites.
+
+```{r ProteasomeCleavage, echo = TRUE}
+# --------------- #
+# Define S4 class #
+# --------------- #
+
+# This is the definition of the ProteasomeCleavage class (S4 object)
+#
+# 1) slots: define the slots (a.k.a. fields) included in the new class, each slot with its own class
+#
+# 2) prototype: default values, NA otherwise.
+#
+# The names in 'slots' and 'prototype' must be the same, otherwise, there will
+# be an error.
+
+setClass("ProteasomeCleavage",
+         
+         slots     = c(id                 = "character",
+                       sequence           = "character",
+                       sequence_length    = "numeric",
+                       linker             = "character",
+                       nb_linkers         = "numeric",
+                       cleavage_threshold = "numeric",
+                       nb_sites           = "numeric",
+                       cleavage_score     = "numeric",
+                       fragments_imm      = "data.table"),
+         
+         prototype = list(id                 = NA_character_,
+                          sequence           = NA_character_,
+                          sequence_length    = NA_real_,
+                          linker             = NA_character_,
+                          nb_linkers         = NA_real_,
+                          cleavage_threshold = 0.5,
+                          nb_sites           = NA_real_,
+                          cleavage_score     = NA_real_,
+                          fragments_imm      = data.table()),
+         
+         validity = check_ProteasomeCleavage
+)
+```
+
+<p>&nbsp;</p>
+<p>&nbsp;</p>
+
+## Validity function
+
+- Define a *validity* function that checks all the arguments have the correct format (e.g., 
+data.frames with a specified number of columns, the lengt of some arguments that must be strictly of length 1, etc.) and returns the error messages, if any.
+
+- This function will be ran each time a `S4` instance is modified.
+
+- This *validity* function must have only one argument `object`.
+
+- Output: `TRUE` if all the validty test were passed, or all the collected error messages. 
+
+```{r Validity_example, echo = TRUE} 
+# Use this function to verify the data format is correct
+# Ideally, you want to verify each slot
+check_ProteasomeCleavage <- function(object) {
+  
+  # Collect error messages in this vector
+  errors <- character()
+  
+  # ID
+  length.id <- length(object@id)
+  if (length.id != 1) {
+    msg <- paste("ID is length ", length.id, ".  Should be 1", sep = "")
+    errors <- c(errors, msg)
+  }
+  
+  
+  # Sequence
+  if (!is.na(object@sequence)) {
+    
+    nchar.seq <- nchar(object@sequence)
+    
+    if (nchar.seq < 1) {
+      msg <- paste("Sequence length ", nchar.seq, ".  Should be a positive integer", sep = "")
+      errors <- c(errors, msg)
+    }
+  }
+  
+  
+  # Sequence length
+  length.seq <- length(object@sequence_length)
+  if (length.seq != 1) {
+    msg <- paste("The number of sequence lengths is ", length.seq, ".  Should be 1", sep = "")
+    errors <- c(errors, msg)
+  }
+  
+  
+  # Linker
+  if (!is.na(object@linker)) {
+    
+    length.linker <- length(object@linker)
+    
+    if (length.linker != 1) {
+      msg <- paste("The number of linkers is ", length.linker, ".  Should be 1", sep = "")
+      errors <- c(errors, msg)
+    }
+  }
+  
+  
+  # Number of Linkers
+  if (!is.na(object@nb_linkers)) {
+    
+    length.nb_linkers <- length(object@nb_linkers)
+    
+    if (length.nb_linkers != 1) {
+      msg <- paste("The number of linker lengths is ", length.linker, ".  Should be 1", sep = "")
+      errors <- c(errors, msg)
+    }
+  }
+  
+  # Treshold
+  if (!is.na(object@cleavage_threshold)) {
+    
+    length.cleavage_threshold <- length(object@cleavage_threshold)
+    
+    if (length.cleavage_threshold != 1) {
+      msg <- paste("The number of thresholds is ", length.seq, ".  Should be 1", sep = "")
+      errors <- c(errors, msg)
+    }
+    
+    if (object@cleavage_threshold < 0 | object@cleavage_threshold > 1){
+      msg <- paste("The threshold value is ", object@cleavage_threshold, ".  Should be between 0-1", sep = "")
+      errors <- c(errors, msg)
+    }
+  }
+  
+  
+  # Number of sites
+  if (!is.na(object@nb_sites)) {
+    
+    length.nb_sites <- length(object@nb_sites)
+    
+    if (length.nb_sites != 1) {
+      msg <- paste("The number of sites length is ", length.nb_sites, ".  Should be 1", sep = "")
+      errors <- c(errors, msg)
+    }
+    
+    if (object@nb_sites < 1){
+      msg <- paste("The number of sites value is ", object@nb_sites, ".  Should be a positive integer.", sep = "")
+      errors <- c(errors, msg)
+    }
+    
+    if (!is.integer(object@nb_sites)) {
+      msg <- paste("The number of sites value is of class ", class(object@nb_sites), ".  Should be a positive integer.", sep = "")
+      errors <- c(errors, msg)
+    }
+  }
+  
+  
+  # Cleavage score
+  if (!length(object@cleavage_score)) {
+    
+    length.cleavage_score <- length(object@cleavage_score)
+    
+    if (length.cleavage_score < 1){
+      msg <- paste("The number of cleavage scores is ", length.cleavage_score, ".  Should be a positive integer", sep = "")
+      errors <- c(errors, msg)
+    }
+  }
+  
+  
+  # Fragments
+  if (nrow(object@fragments_imm)) {
+    
+    ncol.fragments_imm <- ncol(object@fragments_imm)
+    nrow.fragments_imm <- nrow(object@fragments_imm)
+    
+    if (nrow.fragments_imm < 1){
+      msg <- paste("The number of rows in the fragments table is ", nrow.fragments_imm, ".  Should be a positive integer", sep = "")
+      errors <- c(errors, msg)
+    }
+    
+    if (ncol.fragments_imm != 6) {
+      msg <- paste("The number of rows in the fragments table is ", ncol.fragments_imm, ".  Should be 6", sep = "")
+      errors <- c(errors, msg)
+    }
+  }
+  
+  # In case of errors, return the collected messages
+  if (length(errors) == 0) TRUE else errors
+}
+```
+
+<p>&nbsp;</p>
+<p>&nbsp;</p>
+
+## Manual creation of an instance of the `ProteasomeCleavage` class
+
+<p>&nbsp;</p>
+
+- Use the function `new` to create an empty instance of a `S4` class object.
+
+```{r ProteasomeCleavage_manual_creation, echo = TRUE}
+
+# This is an initialization, the remaining fields will be filled up afterwards
+ID1.ProteasomeCleavage <- new("ProteasomeCleavage",
+                              id       = "ID1",
+                              sequence = "CAHVIWGFDMDVYSMDGTSMFYILNFS")
+
+# Uncomment for example only
+# ID1.ProteasomeCleavage <- new("ProteasomeCleavage",
+#                               id  = "ID1",
+#                               seq = "CAHVIWGFDMDVYSMDGTSMFYILNFS")
+
+```
+
+<p>&nbsp;</p>
+
+- Use the function `getSlots` to show the class prototype.
+
+- Show the content of the new instance. Note that the slot `cleavage_threshold` was already
+initialize from the prototype when `ProteasomeCleavage` was defined.
+
+```{r ProteasomeCleavage_manual_creation_slots, echo = TRUE, collapse=TRUE}
+
+getSlots("ProteasomeCleavage")
+
+
+ID1.ProteasomeCleavage
+
+```
+
+<p>&nbsp;</p>
+
+- Use the operator `@` to acces the slots of a `S4` class object.
+- Alternatively, you can use the function `slot`, with the instance of your class and the slot name.
+
+```{r ProteasomeCleavage_access_slots, echo = TRUE, collapse=TRUE}
+
+ID1.ProteasomeCleavage@id
+
+
+slot(ID1.ProteasomeCleavage, "id")
+
+```
+
+<p>&nbsp;</p>
+<p>&nbsp;</p>
+
+## Automated creation of an instance of the `ProteasomeCleavage` class
+
+- Let's explore how many sequences we have in our results and their length.
+- In this example we will create one instance for each protein ID in the `proteasome.cleavage.results` table.
+
+```{r Explore_results, echo = TRUE, collapse=TRUE}
+
+# Number of protein IDs in our result table
+unique(proteasome.cleavage.results$protein_id)
+
+
+# Sequence length of each protein
+proteasome.cleavage.results |> 
+  group_by(protein_id) |> 
+  summarise(Nb_residues = n())
+```
+
+<p>&nbsp;</p>
+<p>&nbsp;</p>
+
+- The code of the function to generate the instances is in the `Utilities.R` script in this repository.
+
+```{r ProteasomeCleavage_automated_creation, echo = TRUE, collapse=TRUE}
+
+# ProteasomeCleavageFeatures is a list where each entry contains a ProteasomeCleavage object
+ProteasomeCleavageFeatures <- CreateProteasomeCleavageFeatures(in.df = proteasome.cleavage.results)
+
+
+names(ProteasomeCleavageFeatures)
+
+
+ProteasomeCleavageFeatures$Sequence_1
+```
+
+<p>&nbsp;</p>
+<p>&nbsp;</p>
+
+## Update slots of a `ProteasomeCleavage` instance.
+
+- Some slots can be updated once the `ProteasomeCleavage` instance was created.
+- We will add the linker sequence to each protein in our example.
+
+```{r ProteasomeCleavage_update_slot, echo = TRUE, collapse=TRUE}
+
+ProteasomeCleavageFeatures$Sequence_1@linker <- ""
+ProteasomeCleavageFeatures$Sequence_2@linker <- "GGGGSGGGGS"
+ProteasomeCleavageFeatures$Sequence_3@linker <- "GGGGSGGGGSGGGGS"
+
+# Trying to assign a value not defined in the prototype will raise an error
+# ProteasomeCleavageFeatures$Sequence_1@linker <- NA
+# ProteasomeCleavageFeatures$Sequence_1@linker <- 1
+
+ProteasomeCleavageFeatures$Sequence_3
+```
+
+
+<p>&nbsp;</p>
+<p>&nbsp;</p>
+
+## Define and apply methods taking advantage of our custom class
+
+We have to complete the missing slots in our `ProteasomeCleavage` instances: `nb_linkers`, 
+`nb_sites`, and `fragments_imm`.
+
+One possibility is to calculate these values externally and then update the slots,
+but we can also create methods that work with the `ProteasomeCleavage`.
+
+<p>&nbsp;</p>
+
+- We will find the number of linkers in the input sequences.
+- First externally and after defining a method.
+
+```{r Linkers_no_method, echo = TRUE, collapse=TRUE}
+
+linker   <- ProteasomeCleavageFeatures$Sequence_2@linker
+sequence <- ProteasomeCleavageFeatures$Sequence_2@sequence
+
+# Then we can assign it to the ProteasomeCleavage instance in the 
+ProteasomeCleavageFeatures$Sequence_2@nb_linkers <- str_count(sequence, pattern = linker)
+```
+
+<p>&nbsp;</p>
+
+- We can also define a method that recognize the structure of our class.
+- To define a method we need two steps:
+    - Define a generic : let the system know the method name and the required arguments
+    - Define the method : the function itself
+- **NOTE**: the name and arguments provided to the `setGeneric` and `setMethod` must be the same.
+
+```{r set_Linkers_method, echo = TRUE, collapse=TRUE}
+
+# Define the generic
+# 
+# Requires two arguments:
+# 1) The generic/method name
+# 2) The method arguments
+setGeneric("set_nb_linkers", function(x, value) standardGeneric("set_nb_linkers"))
+
+
+# Define the method
+#
+# Requires three arguments:
+#
+# 1) Method name: Same name as in its corresponding 'setGeneric'
+# 2) Class name: S4 class name
+# 3) Arguments: similar when defining a function 
+setMethod("set_nb_linkers", "ProteasomeCleavage", function(x, value) {
+  x@nb_linkers <- value
+  x 
+  # Returns the updated version of the instance
+})
+
+
+
+ProteasomeCleavageFeatures$Sequence_3 <- set_nb_linkers(x     = ProteasomeCleavageFeatures$Sequence_3,
+                                                        value = 7)
+
+
+# These are not the real number of linkers, it is just an example
+nb.linkers <- c(3,5,7)
+
+ProteasomeCleavageFeatures <- map2(.x = ProteasomeCleavageFeatures,
+                                   .y = nb.linkers,
+                                   .f = ~set_nb_linkers(x     = .x,
+                                                        value = .y))
+```
+
+<p>&nbsp;</p>
+<p>&nbsp;</p>
+
+- Now that we have understood the logic, let's create another method to calculate the number of linkers.
+- This method calls the previosly defined `set_nb_linkers` method.
+
+```{r Linkers_with_method, echo = TRUE, collapse=TRUE}
+
+setGeneric("count_linkers_in_seq", function(x) standardGeneric("count_linkers_in_seq"))
+
+setMethod("count_linkers_in_seq", "ProteasomeCleavage", function(x) {
+
+  # First claculate the number of linkers ...
+  if (x@linker != "") {
+    
+    # The sequence and linkers are taken from the CleavageFeatures instance ('x')
+    nb.linkers <- str_count(x@sequence, pattern = x@linker)
+
+    # If no linker sequence is provided, then the number of linkers becomes 0 
+  } else {
+    nb.linkers <- 0
+  }
+  
+  # ... then write it
+  x <- set_nb_linkers(x     = x,
+                      value = nb.linkers)
+
+  x
+})
+
+
+# Calculate the number of linkers
+ProteasomeCleavageFeatures <- map(ProteasomeCleavageFeatures, count_linkers_in_seq)
+
+
+ProteasomeCleavageFeatures$Sequence_1@nb_linkers
+
+
+ProteasomeCleavageFeatures$Sequence_2@nb_linkers
+
+
+ProteasomeCleavageFeatures$Sequence_3@nb_linkers
+```
+
+<p>&nbsp;</p>
+<p>&nbsp;</p>
+
+- Here is another little more complex example.
+
+```{r nb_cleavage_sites, echo = TRUE, collapse=TRUE}
+setGeneric("set_nb_sites", function(x, value) standardGeneric("set_nb_sites"))
+setGeneric("set_fragments_imm", function(x, value) standardGeneric("set_fragments_imm"))
+setGeneric("get_fragments", function(x) standardGeneric("get_fragments"))
+
+
+setMethod("set_nb_sites", "ProteasomeCleavage", function(x, value) {
+  x@nb_sites <- value
+  x 
+})
+
+
+setMethod("set_fragments_imm", "ProteasomeCleavage", function(x, value) {
+  x@fragments_imm <- value
+  x 
+})
+
+
+setMethod("get_fragments", "ProteasomeCleavage", function(x) {
+
+  # Get the number of sites with a score equal/greater than the threshold
+  sites.pos <- which(x@cleavage_score >= x@cleavage_threshold)
+  nb.sites  <- length(sites.pos) 
+  
+  x <- set_nb_sites(x     = x,
+                    value = nb.sites)
+  
+  
+  # Get the position of the fragments
+  fragments.coordinates.df <- get.fragments.coordinates(cleavage.scores = x@cleavage_score,
+                                                        thr             = x@cleavage_threshold,
+                                                        proteinseq      = x@sequence,
+                                                        name            = x@id)
+
+  x <- set_fragments_imm(x     = x,
+                         value = fragments.coordinates.df)
+  x
+})
+
+
+
+# Get the fragment sequences
+ProteasomeCleavageFeatures <- map(ProteasomeCleavageFeatures, get_fragments)
+
+
+ProteasomeCleavageFeatures$Sequence_1@fragments_imm
+
+
+ProteasomeCleavageFeatures$Sequence_2@fragments_imm
+
+
+ProteasomeCleavageFeatures$Sequence_3@fragments_imm
+```

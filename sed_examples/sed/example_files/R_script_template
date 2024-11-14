@@ -1,0 +1,4 @@
+input_file = <sed_in_file>
+
+df = read.delim(input_file)
+write.table(df, <sed_out_file>)

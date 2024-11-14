@@ -1,0 +1,132 @@
+---
+title: "S4 examples"
+output: ioslides_presentation
+date: "Date: `r Sys.Date()`"
+author: "Jaime A Castro-Mondragon"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+
+required.libraries <- c("cowplot",
+                        "data.table",
+                        "rmarkdown",
+                        "tidyverse")
+
+for (lib in required.libraries) {
+  suppressPackageStartupMessages(library(lib, character.only = TRUE, quietly = T))
+}
+```
+
+
+<style>
+p.caption {
+  font-size: 0.6em;
+}
+</style>
+
+
+## Motivation of using `S4`
+
+- Usually we have the needed information in multiple tables, an easy way to have all information in one object is by merging tables.
+
+- But sometimes we need to work with objects that cannot be easily merged: `data.frames` with nested `list`s.
+
+- Repeat similar operations over a set of IDs, sometimes the metadata of one ID is non-available (this may cause information lose when merging tables).
+
+
+## `S4` class objects
+
+- One type of the `R` object oriented (*OO*) systems (other OO systems are `S3` and `R6`).
+
+- `S4` allows a formal and strict class definition and inheritance.
+
+
+
+## Why to use `S4` ?
+
+- `S4` is a rigorous system that forces you to think carefully about program design.
+
+- It's well-suited for building large systems that evolve over time and will receive contributions from many programmers.
+
+- It is used by the Bioconductor project.
+
+
+
+## *Class* properties
+
+- **Name** 
+
+- **Representation** : list of slots (fields)
+
+- **Inheritance** : classes associated to the slots.
+
+
+## Protease cleavage
+
+- Damaged or missfolded proteins are exported to and degraded by the proteasome.
+- The resulting peptides (1-3 residues on average) are used for protein synthesis.
+
+```{r protease_cleavage, out.height="300px", out.width="450px", fig.align='center', fig.cap="Weeder BR et al 2021. pepsickle rapidly and accurately predicts proteasomal cleavage sites for improved neoantigen identification."}
+
+knitr::include_graphics("img/proteasome.jpg", dpi = 100)
+```
+
+
+## Vaccine construct
+
+- The selected epitopes are inserted in an array.
+
+- In many cases, linker sequences are inserted between epitopes.
+
+```{r constructs, out.height="300px", out.width="450px", fig.align='center', fig.cap="Mugunthan SP & Harish MC, 2021. Multi-epitope-Based Vaccine Designed by Targeting Cytoadherence Proteins of Mycoplasma gallisepticum."}
+
+knitr::include_graphics("img/example_construct.png", dpi = 100)
+```
+
+
+## Example of `S4` class definition
+
+```{r ProteasomeCleavage, echo = TRUE}
+setClass("ProteasomeCleavage",
+  
+  # Slots (a.k.a fields) with their classes   
+  slots = c(id                 = "character",
+            sequence           = "character",
+            cleavage_threshold = "numeric",
+            nb_sites           = "numeric",
+            fragments_imm      = "data.table"),
+  
+  # Initialize slots      
+  prototype = list(id                 = NA_character_,
+                   sequence           = NA_character_,
+                   cleavage_threshold = 0.5,
+                   nb_sites           = NA_real_,
+                   fragments_imm      = data.table())
+)
+```
+
+
+## *Validity* function
+
+- By definition `S4` classes are strictly defined, but additionally, we could create a *validity* functions to evaluate wheter the content in each slot is valid according to our criteria.
+
+- *Validity* functions are launched each time a `S4` object is updated (created, modified).
+
+
+## Take-home messages
+
+- Working with `S4` class objects makes you think in advance when you are programming.
+
+- It is very suitable for long-term projects involving many programmers.
+
+- Although more verbose than other OO systems, it has the advantage of validate the content, which may be very useful to avoid bugs or unexpected behavior.
+
+
+## Further reading
+
+This is just an introduction, other `S4`-related topics (such herritability) were not included pin this presentation but can be found in the following sources.
+
+- [Object-oriented R](https://adv-r.hadley.nz/oo.html)
+- [OO essentials](http://adv-r.had.co.nz/OO-essentials.html)
+- [S4](http://adv-r.had.co.nz/S4.html)

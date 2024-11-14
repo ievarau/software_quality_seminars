@@ -1,0 +1,7 @@
+s/Owner and Operator Guide/Installation Guide/g
+/Owner/{
+N
+s/ *\n/ /
+s/Owner and Operator Guide */Installation Guide\
+/
+}

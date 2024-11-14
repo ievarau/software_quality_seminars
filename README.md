@@ -2,7 +2,7 @@
 
 This is a repo for scripts and documents that are related to the NCMM Software quality seminars.
 
-Last updated: 2022 January 13
+Last updated: 2022 November 17
 
 
 ```bash
@@ -40,13 +40,18 @@ This folder contains some script files created by different people in order to l
 
 This folder contains the favourite plots of people. The plots were used to create different RMarkdown documents during the workshop.
 
+### S4_R
 
+This folder contains the basics to use S4 class objects in R. It contains the code with a small presentation (in .Rmd).
 
+### ggplot_advanced_plotting_part1 ###
+
+This folder contains the `.rmd` files that generates an `html` report (also in the folder) with examples and instructions on how to generate two more advanced plots with `ggplot2`. This involves ploting sequence motifs and inserting images, also combining plots.
 
 # Contact information
 
-If you have questions or concers, please contact:
+If you have questions or concerns, please contact:
 
-- Kata Ferenc : 
+- [Kata Ferenc](https://github.com/ferenckata) : katalitf@uio.no
 - [Ieva Rauluseviciute](https://bitbucket.org/ievara/)     : ievarau@ncmm.uio.no
-- [Jaime A Castro-Mondragon](https://jaimicore.github.io/) : j.a.c.mondragon@ncmm.uio.no
+- [Jaime A Castro-Mondragon](https://jaimicore.github.io/) : jacmondragon@nykode.com

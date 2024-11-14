@@ -1,0 +1,366 @@
+---
+title: "Hands-on RMarkdown session"
+subtitle: "Let's learn and practice!"
+author:
+    - Ieva Rauluseviciute
+date: 'Date: `r Sys.Date()`'
+output:
+    html_document:
+        toc: yes
+        toc_depth: 3
+        toc_float: yes
+        theme: cerulean
+        code_download: true
+    pdf_document:
+        toc: yes
+        toc_depth: '3'
+geometry: margin = 1cm
+---
+
+# Introduction
+
+<div align = "justify">
+RMarkdown is a very useful thing to learn and it can help you:
+
+- make a nice report on your analysis;
+- create a reproducible workflow;
+- make a tutorial (just like this one);
+- make organized notes when executing code.
+
+In this document I will not list all the syntax or other functionalities of RMarkdown, because this was already covered or there are plenty of recourses online (see bolow). Here we will try to write and execute code.
+</div>
+
+<p>&nbsp;</p>
+
+```{r how_to_render, eval = FALSE, echo = TRUE}
+rmarkdown::render(
+    "/home/ievarau/Documents/phd/software_quality_seminars/rmarkdown_hands-on/hands_on.Rmd",
+    output_format = "html_document")
+# rmarkdown::render("input.Rmd", html_document(toc = TRUE, toc_depth = 2))
+```
+
+## RMarkdown cheatsheet
+
+RStudio (or now Posit) offers a collection of [**cheatsheets**](https://posit.co/resources/cheatsheets/) that I highly recommend. One of them is for [**RMarkdown**](https://rstudio.github.io/cheatsheets/html/rmarkdown.html).
+
+## Other recources
+
+Basic RMarkdown syntax was covered in Software quality session. There are some recources available.
+
+- [this GIT repo](https://github.com/ievarau/software_quality_seminars/tree/main/rmarkdown) with the template document, examples and explanations. It has it's accompanying SoftFlix [episode](https://drive.google.com/drive/folders/1OvV3Ajw39mYW30ZIeHJmCSfUDk_sPFfy)
+- Some other topics were covered using RMarkdown. For example [more advanced ggplot2 plotting session](https://github.com/ievarau/software_quality_seminars/tree/main/ggplot_advanced_plotting_part1).
+
+# Load your libraries
+
+```{r loading_libraries, eval = TRUE, echo = TRUE, include = TRUE, cache = TRUE}
+
+required.libraries <- c("cowplot",
+                        "data.table",
+                        "ggplot2",
+                        "tidyverse",
+                        "png",
+                        "ggseqlogo",
+                        "ggrepel",
+                        "downloadthis")
+
+for (lib in required.libraries) {
+    suppressPackageStartupMessages(library(lib, character.only = TRUE, quietly = T))
+}
+```
+
+
+```{r set_plotting_theme, eval = TRUE, echo = FALSE, include = TRUE, cache = TRUE}
+ggplot2::theme_set(
+    theme_bw() +
+        theme(
+            plot.title = element_text(size = 14),
+            axis.title = element_text(size = 16, colour = "black"),
+            axis.text = element_text(size = 14, colour = "black")
+        )
+)
+```
+
+
+# Get your data
+
+You can run bash chunks in here. Make sure you have that `engine.opts='-l'` parameter.
+
+```{bash get_files, engine.opts='-l', eval = FALSE, echo = FALSE, include = FALSE}
+mkdir -p example_data ;
+
+wget -O example_data/CTCF_conservation.tsv https://raw.githubusercontent.com/ievarau/software_quality_seminars/main/ggplot_advanced_plotting_part1/conservation_plot/CTCF_conservation.tsv
+wget -O example_data/CTCF_conservation_random.tsv https://raw.githubusercontent.com/ievarau/software_quality_seminars/main/ggplot_advanced_plotting_part1/conservation_plot/CTCF_conservation_random.tsv
+
+wget -O example_data/cobinder_0.txt https://raw.githubusercontent.com/ievarau/software_quality_seminars/main/ggplot_advanced_plotting_part1/conservation_plot/cobinder_0.txt
+wget -O example_data/core_0.txt https://raw.githubusercontent.com/ievarau/software_quality_seminars/main/ggplot_advanced_plotting_part1/conservation_plot/core_0.txt
+
+```
+
+
+```{r parameters_and_files, eval = TRUE, echo = TRUE, include = TRUE, cache = TRUE}
+
+## Conservation files:
+cons_file        <- "example_data/CTCF_conservation.tsv"
+random_cons_file <- "example_data/CTCF_conservation_random.tsv"
+
+## Motifs:
+cobinder_file <- "example_data/cobinder_0.txt"
+core_file     <- "example_data/core_0.txt"
+
+## Motif grammar:
+location <- "left"
+spacing  <- "13"
+```
+
+# Read your data
+
+```{r reading_input, eval = TRUE, echo = TRUE, include = TRUE, cache = TRUE}
+
+## Conservation files:
+cons   <- data.table::fread(cons_file, header = FALSE)
+random <- data.table::fread(random_cons_file, header = FALSE)
+
+df   <- cbind(cons, random[,2])
+colnames(df) <- c("dist", "Observed", "Random")
+
+df <- df %>%
+    dplyr::select(dist, Observed, Random) %>% 
+    gather(key = "Track", value = "value", -dist)
+
+## Motif files:
+cobinder_matrix <- data.table::fread(cobinder_file, header = FALSE)
+core_matrix     <- data.table::fread(core_file, header = FALSE)
+```
+
+## Conservation data
+
+```{r visualize_conservation_data, eval = TRUE, echo = FALSE, include = TRUE, cache = TRUE, fig.cap = "**Table 1. Conservation data**. Example table with real observations", fig.align = "center", fig.height = 6, fig.width = 7}
+
+DT::datatable(
+    df,
+    style = "default",
+    rownames = FALSE,
+    options = list(
+        scrollX = TRUE))
+```
+
+## Input motifs {.tabset}
+
+```{r show_motif_matrices, results = 'asis', cache = TRUE, echo = FALSE, eval = TRUE, fig.cap = "**Table 2. Motif matrices**", fig.align = "center", fig.height = 6, fig.width = 7}
+
+matrix_list <- list(cobinder_matrix, core_matrix)
+names(matrix_list) <- c("COBINDER", "CORE")
+
+for (matrix_name in names(matrix_list)) {
+
+    motif_pfm <- matrix_list[[matrix_name]]
+    colnames(motif_pfm) <- c("A", "C", "G", "T")
+
+    ## Header:
+    cat("###", matrix_name, "    \n")
+
+    print(knitr::kable(motif_pfm))
+
+    cat('\n\n')
+}
+
+```
+## {.unlisted .unnumbered .toc-ignore}
+
+# Plot your data
+
+## Plotting conservation
+
+```{r plotting_conservation, eval = TRUE, echo = TRUE, include = TRUE, cache = TRUE, fig.cap = "**Figure 1. Conservation plot**", fig.align = "center", fig.height = 6, fig.width = 7, warning = FALSE}
+
+colors <- c("#ae017e", "#bdbdbd")
+
+## Conservation base plot:
+conservation_plot <- ggplot(
+        df, 
+        aes(x = dist, y = value)) + 
+    geom_line(aes(color = Track)) + 
+    scale_color_manual(values = colors) + 
+    theme_bw() + 
+    xlab("Distance from feature") + 
+    ylab("Conservation score") +
+    theme(legend.position = "bottom") +
+    theme(
+        plot.title = element_text(size = 14),
+        axis.title = element_text(size = 16, colour = "black"),
+        axis.text = element_text(size = 14, colour = "black")
+    )
+
+conservation_plot
+```
+
+```{r motif_locations, eval = TRUE, echo = TRUE, include = TRUE, cache = TRUE}
+
+cobinder_size <- nrow(cobinder_matrix)
+core_size     <- nrow(core_matrix)
+
+window_size   <- nrow(random)
+
+core_end   <- (core_size / 2)
+core_start <- ((-1 * core_size) / 2)
+
+if (location == "left") {
+    spacing       <- (-1 * as.numeric(spacing))
+    cobinder_size <- (-1 * cobinder_size)
+}
+
+cobinder_end   <- core_start + spacing
+cobinder_start <- cobinder_end + cobinder_size
+
+core_segment     <- data.frame(
+    x    = core_start,
+    xend = core_end,
+    y    = 0,
+    yend = 0)
+cobinder_segment <- data.frame(
+    x    = cobinder_start,
+    xend = cobinder_end,
+    y    = 0,
+    yend = 0)
+```
+
+```{r plotting_motif_locations, eval = TRUE, echo = TRUE, include = TRUE, cache = TRUE, fig.cap = "**Figure 2. Conservation plot with specified motif locations**", fig.align = "center", fig.height = 6, fig.width = 7, warning = FALSE}
+
+conservation_plot <- conservation_plot +
+    geom_segment(data = core_segment,
+                aes(x = x, y = y, yend = yend, xend = xend),
+                inherit.aes = FALSE,
+                colour = "red", linewidth = 2,
+                show.legend = NA) +
+    geom_segment(data = cobinder_segment,
+                aes(x = x, y = y, yend = yend, xend = xend),
+                inherit.aes = FALSE,
+                colour = "darkgreen", linewidth = 2)
+
+conservation_plot
+```
+
+## Plotting motif logos {.tabset}
+
+```{r drawing_motif_logos, results = 'asis', eval = TRUE, echo = TRUE, include = TRUE, cache = TRUE, warning = FALSE}
+
+plot_motif <- function(motif_matrix) {
+    motif_logo <- ggplot() +
+        geom_logo(motif_matrix, method = 'bits', stack_width = 1) +
+        theme_logo() +
+        scale_x_continuous(expand = c(0, 0)) +
+        scale_y_continuous(limits = c(0,2), expand = c(0, 0)) +
+        theme(axis.text.x = element_blank(),
+                axis.title.y = element_blank(),
+                axis.text.y = element_blank(),
+                panel.grid = element_blank(),
+                axis.line=element_blank(),
+                axis.text = element_blank(),
+                axis.ticks=element_blank(),
+                axis.title = element_blank(),
+                panel.border=element_blank(), 
+                panel.spacing = unit(0, "cm"),
+                panel.grid.major=element_blank(),
+                panel.grid.minor=element_blank(),
+                plot.margin = margin(0, 0, 0, 0, "cm"))
+    return(motif_logo)
+}
+## Cobinder matrix:
+colnames(cobinder_matrix) <- c("A", "C", "G", "T")
+cobinder_matrix <- t(cobinder_matrix)
+cobinder_logo   <- plot_motif(cobinder_matrix)
+
+## Core matrix:
+colnames(core_matrix) <- c("A", "C", "G", "T")
+core_matrix <- t(core_matrix)
+core_logo   <- plot_motif(core_matrix)
+```
+
+```{r visualize_motif_logos, results = 'asis', eval = TRUE, echo = FALSE, include = TRUE, cache = TRUE, fig.cap = "**Figure 3. Motif logos**", fig.align = "center", fig.height = 2, fig.width = 4, warning = FALSE}
+# ## Combining plot for display:
+# combined_plot <- cowplot::plot_grid(
+#     core_logo, cobinder_logo,
+#     labels = c("A", "B"),
+#     ncol = 1, nrow = 2)
+
+# combined_plot
+cat("### COBINDER logo    \n")
+print(cobinder_logo)
+cat('\n')
+cat("### CORE logo    \n")
+print(core_logo)
+cat('\n')
+```
+
+## {.unlisted .unnumbered .toc-ignore}
+
+## Annotating conservation plot with motifs
+
+```{r adding_motifs, eval = TRUE, echo = TRUE, include = TRUE, cache = TRUE, fig.cap = "**Figure 4. Conservation plot with visualized motifs and their locations**", fig.align = "center", fig.height = 6, fig.width = 7, warning = FALSE}
+
+## Adding motifs to the plot:
+conservation_plot <- conservation_plot +
+    annotation_custom(
+        ggplotGrob(core_logo),
+        xmin = core_segment$x, 
+        xmax = core_segment$xend,
+        ymin = 0.0005,
+        ymax = round(max(df$value)/12, 2)) +
+    annotation_custom(
+        ggplotGrob(cobinder_logo),
+        xmin = cobinder_segment$x,
+        xmax = cobinder_segment$xend,
+        ymin = 0.0005,
+        ymax = round(max(df$value)/12, 2))
+
+conservation_plot
+
+## Expporting the plot:
+conservation_plot_pdf <- file.path("conservation_plot_example_with_annotations.pdf")
+ggsave(
+    plot      = conservation_plot,
+    filename  = conservation_plot_pdf,
+    width     = 7,
+    height    = 6,
+    limitsize = FALSE)
+```
+
+# Download results
+
+```{r, conservation-button, results = 'asis', cache = TRUE, echo = FALSE, eval = TRUE, fig.align = "center"}
+
+downloadthis::download_file(
+    path = as.vector(conservation_plot_pdf),
+    output_name = "conservation_plots",
+    button_label = "Download conservation plot as pdf",
+    button_type = "primary",
+    has_icon = TRUE,
+    icon = "fa fa-save",
+    self_contained = FALSE)
+
+```
+
+# Importing and displaying results from other places
+
+We will try to import a plot as an R object and then display it in our report.
+
+```{r show_plots, eval = TRUE, echo = TRUE, include = TRUE, cache = TRUE, fig.cap = "**Figure 5. Spacings plot for SOX17**", fig.align = "center", fig.height = 10, fig.width = 20, out.width = "150%", warning = FALSE}
+
+path_to_example_plot <- "example_data/example_plot.RData"
+
+spacings_plot <- get(load(path_to_example_plot))
+
+path_to_example_plot <- "example_data/example_plot.png"
+
+knitr::include_graphics(path_to_example_plot, dpi = 1200)
+
+```
+
+<p>&nbsp;</p>
+<p>&nbsp;</p>
+
+<div align = "center">
+![**Figure 6. Spacings plot for SOX17**. Loaded from PDF](example_data/example_plot.pdf){width=100% height=400}
+</div>
+
+<p>&nbsp;</p>
