@@ -8,7 +8,7 @@ Welcome to SQS's documentation!
 
 .. toctree::
    :maxdepth: 2
-   :caption: Contents:
+   :caption: Something else:
 
    intro
 
