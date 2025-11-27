@@ -1,6 +1,6 @@
 # Software Quality Meeting (Thursday November 21th)
 
-See the IPYNB file for code and visualization.
+See the IPYNB file for code and visualization. **Interactive figures require a running kernel with appropriate dependencies to be displayed.**
 
 This presentation provides a practical guide to choosing the right Python plotting library for different data visualization tasks. Rather than teaching how to use each library, it focuses on when to use them, organizing libraries into categories:
 - Publication Standards: Matplotlib (low-level control for publication polishing), Seaborn (statistical plots and cluster maps), and Plotnine (Grammar of Graphics for R users)
