@@ -2,11 +2,15 @@
 
 See the IPYNB file for code and visualization. **Interactive figures require a running kernel with appropriate dependencies to be displayed.**
 
+You can install dependencies using the following commands:
+
 ```bash
 # Tested on Python 3.13.2
 python -m venv .venv
 source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 pip install -r requirements.txt
+
+Then, use this virtual env as the kernel for the notebook.
 ```
 
 This presentation provides a practical guide to choosing the right Python plotting library for different data visualization tasks. Rather than teaching how to use each library, it focuses on when to use them, organizing libraries into categories:
