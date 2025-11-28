@@ -10,7 +10,7 @@ python -m venv .venv
 source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 
-Then, use this virtual env as the kernel for the notebook.
+# Then, use this virtual env as the kernel for the notebook.
 ```
 
 This presentation provides a practical guide to choosing the right Python plotting library for different data visualization tasks. Rather than teaching how to use each library, it focuses on when to use them, organizing libraries into categories:
