@@ -1,0 +1,18 @@
+Bootstrap: docker
+From: python:3.12-slim
+
+%post
+    apt-get update
+    apt-get install -y --no-install-recommends ca-certificates
+    rm -rf /var/lib/apt/lists/*
+    pip install --no-cache-dir seaborn==0.13.2 matplotlib==3.9.2 pandas==2.2.3
+
+%files
+    app.py /app/app.py
+
+%environment
+    export MPLBACKEND=Agg
+
+%runscript
+    cd /app
+    exec python app.py

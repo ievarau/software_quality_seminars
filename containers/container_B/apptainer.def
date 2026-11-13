@@ -1,0 +1,12 @@
+Bootstrap: docker
+From: rocker/r-ver:4.4.1
+
+%post
+    R -e "install.packages('ggplot2', repos='https://cloud.r-project.org')"
+
+%files
+    app.R /app/app.R
+
+%runscript
+    cd /app
+    exec Rscript app.R
