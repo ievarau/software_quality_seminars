@@ -1,4 +1,4 @@
-FROM rocker/r-ver:4.4.1
+FROM docker.io/rocker/r-ver:4.4.1
 
 WORKDIR /app
 
