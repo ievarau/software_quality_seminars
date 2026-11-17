@@ -125,3 +125,5 @@ dmypy.json
 .Rproj.user
 software_quality_seminars.Rproj
 S4_R/S4_R.Rproj
+containers/container_A/seaborn_plot.png
+containers/container_B/ggplot2_plot.png
