@@ -16,3 +16,4 @@ plt.tight_layout()
 plt.savefig("seaborn_plot.png", dpi=150)
 
 print("Saved seaborn_plot.png")
+print("this is a test")

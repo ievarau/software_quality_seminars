@@ -1,6 +1,30 @@
 # Container tutorial (Docker, Podman, Apptainer)
 
-This directory now has two minimal examples:
+## Key concepts
+
+**Container runtime** — the program that runs containers. This tutorial covers three:
+
+- **Docker**: the most widely used container runtime; requires a daemon running as root.
+- **Podman**: a daemonless, rootless alternative to Docker with a nearly identical CLI; better suited for shared HPC-style systems.
+- **Apptainer** (formerly Singularity): designed for HPC environments where users cannot run as root; uses a single `.sif` archive file per image.
+
+**Image** — a read-only, layered snapshot of a filesystem bundled with everything an application needs to run: OS libraries, language runtimes, dependencies, and code. Images are what you `build`, `pull`, and `push`. They live on disk until you explicitly delete them.
+
+**Container** — a running (or stopped) instance created from an image. Each `docker run` or `podman run` spawns a new container from the same image. Multiple containers can run from the same image at the same time without interfering with each other.
+
+**Dockerfile / Containerfile** — a text file with step-by-step instructions for building an image (e.g., which base image to start from, which packages to install, which files to copy in). Docker uses `Dockerfile`; Podman accepts both `Dockerfile` and `Containerfile`.
+
+**Apptainer definition file (`.def`)** — the Apptainer equivalent of a Dockerfile; describes how to build a `.sif` image.
+
+**Tag** — a human-readable label attached to an image, in the form `name:version` (e.g., `cbgr/tutorial-python-seaborn:latest` or `cbgr/tutorial-r-ggplot2:1.0.0`). `latest` is the default tag when none is specified.
+
+**Registry** — a remote storage service for images, such as Docker Hub. Images are `push`ed to and `pull`ed from a registry to share them across machines.
+
+**Volume / bind mount** — a way to make a directory on your host machine accessible inside a running container, so the container can read inputs and write outputs back to disk.
+
+---
+
+This directory has two minimal examples:
 
 - `container_A`: Python + seaborn
 - `container_B`: R + ggplot2
@@ -126,9 +150,9 @@ If you want to pull a specific version or tag instead of `latest`:
 docker pull cbgr/tutorial-r-ggplot2:1.0.0
 ```
 
-## Checking what is available locally
+## Managing local containers and images
 
-Docker keeps a list of both images and running containers. The main commands are:
+### Listing what is available
 
 ```bash
 # Show all local images (downloaded or built)
@@ -141,22 +165,73 @@ docker ps
 docker ps -a
 ```
 
-What each term means:
+Run these first to see what is built, downloaded, or previously run before deciding what to remove.
 
-- Image: a packaged filesystem snapshot of an application and its dependencies. It is what you `build` and `pull`.
-- Container: a running instance created from an image. It is what you `run`.
-- `docker images`: lists available local images and their tags, such as `cbgr/tutorial-python-seaborn:latest`.
-- `docker ps`: lists only currently running containers.
-- `docker ps -a`: lists all containers, even ones that have exited or stopped.
-
-Example:
+### Check disk usage
 
 ```bash
-docker images
-docker ps -a
+docker system df
 ```
 
-This helps you see what was built, downloaded, or previously run.
+This shows how much space is used by images, containers, and build cache, and how much could be reclaimed.
+
+### Remove stopped containers
+
+```bash
+# Remove a specific stopped container by ID (use docker ps -a to find it)
+docker rm <container_id>
+
+# Remove all stopped containers at once
+docker container prune
+```
+
+### Remove images
+
+```bash
+# Remove a specific image by name or ID (use docker images to find it)
+docker rmi tutorial-python-seaborn
+docker rmi cbgr/tutorial-r-ggplot2:1.0.0
+
+# Remove all dangling images (untagged, not referenced by any container)
+docker image prune
+
+# Remove all unused images (dangling + images not used by any container)
+docker image prune -a
+```
+
+### Remove everything unused at once
+
+```bash
+# Remove all stopped containers, dangling images, unused networks, and build cache
+docker system prune
+
+# Also include unused images (not just dangling ones) — frees the most space
+docker system prune -a
+```
+
+Both commands ask for confirmation before deleting anything. Add `-f` to skip the prompt.
+
+### Podman equivalents
+
+Podman uses the same commands and flags:
+
+```bash
+podman images
+podman ps -a
+podman system df
+podman container prune
+podman image prune -a
+podman system prune -a
+```
+
+### Apptainer
+
+Apptainer `.sif` files are plain files on disk. List them with `ls` and remove with `rm`:
+
+```bash
+ls *.sif
+rm python-seaborn.sif r-ggplot2.sif
+```
 
 ## Volumes and mounting
 
@@ -192,6 +267,30 @@ In short:
 
 - `-v "$PWD:/app"` = bind mount a host directory into the container
 - `:Z` = extra SELinux labeling for safe sharing with Podman on SELinux systems
+
+## The `--rm` flag
+
+The `--rm` flag tells Docker or Podman to automatically remove the container once it exits:
+
+```bash
+docker run --rm tutorial-python-seaborn
+```
+
+Without `--rm`, a stopped container stays on disk and accumulates over time. You would need to clean it up manually:
+
+```bash
+docker rm <container_id>
+```
+
+With `--rm`, the container is deleted immediately after the process inside it finishes — no manual cleanup needed.
+
+When to use it:
+
+- Use `--rm` for one-off tasks: running a script, generating a plot, or any short-lived container
+- Skip `--rm` if you need to inspect the container after it exits (e.g., for debugging)
+- `--rm` is not compatible with `-d` (detached mode); Docker will ignore it if both are passed together
+
+All `docker run` and `podman run` examples in this README include `--rm` because these containers are meant to be run once and discarded.
 
 ## Notes
 
