@@ -175,6 +175,41 @@ docker system df
 
 This shows how much space is used by images, containers, and build cache, and how much could be reclaimed.
 
+### Stopping a running container
+
+The containers in this tutorial exit on their own once the script finishes. If you are running a long-lived or interactive container and need to stop it manually:
+
+```bash
+# Find the container ID or name
+docker ps
+
+# Stop it gracefully (sends SIGTERM, waits up to 10 s, then SIGKILL)
+docker stop <container_id>
+
+# Stop immediately without waiting
+docker stop -t 0 <container_id>
+```
+
+From inside an interactive shell session (`docker run -it ...`), you can also just type `exit` or press `Ctrl+D`.
+
+Podman uses the same commands:
+
+```bash
+podman ps
+podman stop <container_id>
+```
+
+Apptainer instances (started with `apptainer instance start`) are stopped with:
+
+```bash
+apptainer instance stop <instance_name>
+
+# Stop all running instances
+apptainer instance stop --all
+```
+
+A plain `apptainer run` or `apptainer exec` runs in the foreground and exits when the command finishes; `Ctrl+C` interrupts it like any other foreground process.
+
 ### Remove stopped containers
 
 ```bash
@@ -224,14 +259,55 @@ podman image prune -a
 podman system prune -a
 ```
 
-### Apptainer
+### Apptainer / Singularity
 
-Apptainer `.sif` files are plain files on disk. List them with `ls` and remove with `rm`:
+Unlike Docker and Podman, Apptainer/Singularity does not have a background daemon or container database. However, disk space is consumed in two main places: **`.sif` image files** and the **build/download cache**.
+
+#### 1. Removing `.sif` image files
+Apptainer `.sif` files are plain standalone files on your filesystem. You can list and delete them using standard shell commands:
 
 ```bash
-ls *.sif
+# List all .sif files in current directory
+ls -lh *.sif
+
+# Delete specific .sif images
 rm python-seaborn.sif r-ggplot2.sif
 ```
+
+#### 2. Managing cache
+When pulling images from Docker Hub/registries or building from definition files, Apptainer/Singularity caches downloaded layers, blobs, and OCI conversions in `~/.apptainer/cache` (or `~/.singularity/cache`). On HPC systems with limited home directory quotas, this cache can fill up quickly.
+
+```bash
+# View cache usage and location
+apptainer cache list -v
+# For singularity:
+# singularity cache list -v
+
+# Clean everything from the cache (prompts for confirmation; add -f to force)
+apptainer cache clean
+# For singularity:
+# singularity cache clean
+
+# Clean only specific cache types (e.g., oci-tmp, blob, or library)
+apptainer cache clean -t oci-tmp
+```
+
+#### 3. Stopping and cleaning running instances
+If you used background instances (`apptainer instance start ...`), make sure they are stopped:
+
+```bash
+# List active instances
+apptainer instance list
+
+# Stop a specific instance
+apptainer instance stop <instance_name>
+
+# Stop all running instances
+apptainer instance stop --all
+```
+
+#### 4. Temporary build files
+If an `apptainer build` fails or is interrupted, leftover temporary files might remain in `/tmp` or `$APPTAINER_TMPDIR` (or `$SINGULARITY_TMPDIR`). You can inspect and safely delete temporary directories prefixed with `.singularity.` or `.apptainer.` if they are not in use.
 
 ## Volumes and mounting
 
