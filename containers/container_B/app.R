@@ -1,3 +1,5 @@
+options(bitmapType = "cairo")
+
 library(ggplot2)
 
 df <- data.frame(
