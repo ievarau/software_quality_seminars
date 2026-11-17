@@ -14,5 +14,4 @@ From: python:3.12-slim
     export MPLBACKEND=Agg
 
 %runscript
-    cd /app
-    exec python app.py
+    exec python /app/app.py
